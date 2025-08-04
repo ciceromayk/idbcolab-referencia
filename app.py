@@ -1,3 +1,5 @@
+pip install streamlit pandas plotly
+
 import datetime
 import pandas as pd
 import plotly.express as px
