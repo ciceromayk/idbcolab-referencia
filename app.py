@@ -87,8 +87,8 @@ def main():
     st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
 
     # Adiciona logo
-    logo_path = "/workspaces/idbcolab-referencia/LOGO IDBCOLAB.png"
-    st.sidebar.image(logo_path, width=200)
+    # logo_path = "/workspaces/idbcolab-referencia/LOGO IDBCOLAB.png"
+    # st.sidebar.image(logo_path, width=200)
 
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
     nome = st.sidebar.text_input("📝 Nome do Projeto")
