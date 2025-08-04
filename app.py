@@ -25,7 +25,7 @@ def calcular_cronograma_macro(data_lancamento: datetime.date) -> Tuple[pd.DataFr
         records.append({"Tarefa": tarefa.upper(), "Início": start, "Término": end})
 
     df = pd.DataFrame(records)
-    
+
     # Ordenar tarefas
     tarefas_ordenadas = [
         "CONCEPÇÃO DO PRODUTO", 
@@ -108,7 +108,7 @@ def main():
     st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
 
     # Add logo from GitHub raw URL
-    logo_path = "/workspaces/idbcolab-referencia/LOGO IDBCOLAB.png"
+    logo_path = "/workspaces/idbcolab-referencia/LOGO IDBCOLAB.png"  # Replace with your raw URL
     st.sidebar.image(logo_path, width=200)
 
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
