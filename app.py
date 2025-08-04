@@ -2,20 +2,20 @@ import datetime
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from typing import Tuple
 
-def calcular_cronograma_macro(data_lancamento: datetime.date) -> Tuple[pd.DataFrame, datetime.date]:
+def calcular_cronograma_macro(data_lancamento: datetime.date) -> tuple:
     offsets = {
-        "CONCEPÇÃO DO PRODUTO":               (0,   180),
-        "INCORPORAÇÃO":                       (180, 420),
-        "ANTEPROJETOS":                       (240, 390),
-        "PROJETOS EXECUTIVOS":                (330, 660),
-        "ORÇAMENTO":                          (390, 690),
-        "PLANEJAMENTO":                       (435, 720),
-        "LANÇAMENTO":                         (240, 540),
-        "PRÉ-OBRA":                           (420, 720),
+        "CONCEPÇÃO DO PRODUTO": (0, 180),
+        "INCORPORAÇÃO": (180, 420),
+        "ANTEPROJETOS": (240, 390),
+        "PROJETOS EXECUTIVOS": (330, 660),
+        "ORÇAMENTO": (390, 690),
+        "PLANEJAMENTO": (435, 720),
+        "LANÇAMENTO": (240, 540),
+        "PRÉ-OBRA": (420, 720),
     }
 
+    # Cálculo do dia zero
     day_zero = data_lancamento - datetime.timedelta(days=offsets["LANÇAMENTO"][1])
     records = []
 
@@ -25,8 +25,8 @@ def calcular_cronograma_macro(data_lancamento: datetime.date) -> Tuple[pd.DataFr
         records.append({"Tarefa": tarefa.upper(), "Início": start, "Término": end})
 
     df = pd.DataFrame(records)
-
-    # Ordenar tarefas
+    
+    # Ordenação das tarefas
     tarefas_ordenadas = [
         "CONCEPÇÃO DO PRODUTO", 
         "INCORPORAÇÃO", 
@@ -37,12 +37,13 @@ def calcular_cronograma_macro(data_lancamento: datetime.date) -> Tuple[pd.DataFr
         "LANÇAMENTO", 
         "PRÉ-OBRA"
     ]
+    
     df['Tarefa'] = pd.Categorical(df['Tarefa'], categories=tarefas_ordenadas, ordered=True)
     df = df.sort_values('Tarefa').reset_index(drop=True)
 
     return df, day_zero
 
-def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, day_zero: datetime.date):
+def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date) -> px.timeline:
     fig = px.timeline(
         df,
         x_start="Início",
@@ -107,15 +108,13 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, day_ze
 def main():
     st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
 
-    # Add logo
-    logo_path = "/workspaces/idbcolab-referencia/LOGO IDBCOLAB.png"  # Altere conforme necessário
+    # Adicionar logo
+    logo_path = "/workspaces/idbcolab-referencia/LOGO IDBCOLAB.png"  # Ajuste se necessário
     st.sidebar.image(logo_path, width=200)
 
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
     nome = st.sidebar.text_input("📝 Nome do Projeto")
-    data_lanc = st.sidebar.date_input(
-        "📅 LANÇAMENTO:", value=datetime.date.today(), format="DD/MM/YYYY"
-    )
+    data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD/MM/YYYY")
     gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
 
     st.title("IDBCOLAB - COMITÊ DE PRODUTO")
@@ -127,10 +126,10 @@ def main():
     if gerar:
         try:
             df, day_zero = calcular_cronograma_macro(data_lanc)
-            fig = criar_grafico_macro(df, data_lanc, day_zero)
+            fig = criar_grafico_macro(df, data_lanc)
             st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
 
-            # --- Displaying the dates as cards ---
+            # Exibir cartões com datas
             inicio_projeto = df['Início'].min()
             hoje = datetime.date.today()
             lancamento = data_lanc
