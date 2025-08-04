@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-def calcular_cronograma_macro(data_lancamento: datetime.date) -> tuple:
+def calcular_cronograma_macro(data_lancamento: datetime.date):
     offsets = {
         "CONCEPÇÃO DO PRODUTO": (0, 180),
         "INCORPORAÇÃO": (180, 420),
@@ -15,7 +15,6 @@ def calcular_cronograma_macro(data_lancamento: datetime.date) -> tuple:
         "PRÉ-OBRA": (420, 720),
     }
 
-    # Cálculo do dia zero
     day_zero = data_lancamento - datetime.timedelta(days=offsets["LANÇAMENTO"][1])
     records = []
 
@@ -26,7 +25,7 @@ def calcular_cronograma_macro(data_lancamento: datetime.date) -> tuple:
 
     df = pd.DataFrame(records)
     
-    # Ordenação das tarefas
+    # Ordenar tarefas
     tarefas_ordenadas = [
         "CONCEPÇÃO DO PRODUTO", 
         "INCORPORAÇÃO", 
@@ -43,7 +42,7 @@ def calcular_cronograma_macro(data_lancamento: datetime.date) -> tuple:
 
     return df, day_zero
 
-def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date) -> px.timeline:
+def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date):
     fig = px.timeline(
         df,
         x_start="Início",
@@ -82,34 +81,13 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date) -> px.
         ))
     fig.update_layout(annotations=annotations, margin=dict(l=250, r=40, t=40, b=40), showlegend=False)
 
-    def add_marker(date: datetime.date, label: str, color: str):
-        fig.add_shape(
-            type="line", x0=date, x1=date,
-            y0=0, y1=1, xref="x", yref="paper",
-            line=dict(color=color, width=2, dash="dot")
-        )
-        fig.add_annotation(
-            x=date, y=0, xref="x", yref="paper",
-            text=f"<b>{label.upper()}</b>",
-            showarrow=False, textangle=-90,
-            font=dict(color="black", size=10),
-            xanchor="left", yanchor="bottom", xshift=5
-        )
-
-    hoje = datetime.date.today()
-    inicio_obras = data_lancamento + datetime.timedelta(days=120)
-
-    add_marker(hoje, "HOJE", "red")
-    add_marker(data_lancamento, "LANÇAMENTO", "blue")
-    add_marker(inicio_obras, "INÍCIO DE OBRAS", "orange")
-
     return fig
 
 def main():
     st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
 
-    # Adicionar logo
-    logo_path = "/workspaces/idbcolab-referencia/LOGO IDBCOLAB.png"  # Ajuste se necessário
+    # Adiciona logo
+    logo_path = "/workspaces/idbcolab-referencia/LOGO IDBCOLAB.png"
     st.sidebar.image(logo_path, width=200)
 
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
