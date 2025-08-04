@@ -1,5 +1,3 @@
-pip install streamlit pandas plotly
-
 import datetime
 import pandas as pd
 import plotly.express as px
@@ -19,8 +17,8 @@ def calcular_cronograma_macro(data_lancamento: datetime.date) -> Tuple[pd.DataFr
     }
 
     day_zero = data_lancamento - datetime.timedelta(days=offsets["LANÇAMENTO"][1])
-
     records = []
+
     for tarefa, (i0, i1) in offsets.items():
         start = day_zero + datetime.timedelta(days=i0)
         end = day_zero + datetime.timedelta(days=i1)
@@ -78,7 +76,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, day_ze
         annotations.append(dict(
             x=meio, y=row["Tarefa"], text=text,
             showarrow=False,
-            font=dict(color="black", size=10, family="Arial Black"),
+            font=dict(color="black", size=10),
             xanchor="center", yanchor="middle"
         ))
     fig.update_layout(annotations=annotations, margin=dict(l=250, r=40, t=40, b=40), showlegend=False)
@@ -93,7 +91,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, day_ze
             x=date, y=0, xref="x", yref="paper",
             text=f"<b>{label.upper()}</b>",
             showarrow=False, textangle=-90,
-            font=dict(color="black", size=10, family="Arial Black"),
+            font=dict(color="black", size=10),
             xanchor="left", yanchor="bottom", xshift=5
         )
 
@@ -109,8 +107,8 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, day_ze
 def main():
     st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
 
-    # Add logo from GitHub raw URL
-    logo_path = "/workspaces/idbcolab-referencia/LOGO IDBCOLAB.png"  # Replace with your raw URL
+    # Add logo
+    logo_path = "/workspaces/idbcolab-referencia/LOGO IDBCOLAB.png"  # Altere conforme necessário
     st.sidebar.image(logo_path, width=200)
 
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
