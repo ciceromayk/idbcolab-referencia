@@ -111,68 +111,33 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
 def main():
     st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
 
-    # Configuração do menu lateral
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
     nome = st.sidebar.text_input("📝 Nome do Projeto")
     data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD/MM/YYYY")
 
-    tasks = [
-        "CONCEPÇÃO DO PRODUTO", 
-        "INCORPORAÇÃO", 
-        "ANTEPROJETOS", 
-        "PROJETOS EXECUTIVOS", 
-        "ORÇAMENTO", 
-        "PLANEJAMENTO", 
-        "LANÇAMENTO", 
-        "PRÉ-OBRA"
-    ]
+    st.sidebar.markdown("## Opções de Personalização")
+    color_palettes = {
+        "Default": None,
+        "Viridis": px.colors.sequential.Viridis,
+        "Cividis": px.colors.sequential.Cividis,
+        "Plotly": px.colors.qualitative.Plotly,
+        "Dark2": px.colors.qualitative.Dark2
+    }
+    selected_palette = st.sidebar.selectbox("Selecione a paleta de cores", list(color_palettes.keys()))
+    color_sequence = color_palettes[selected_palette]
 
-    if "dados_adicionais" not in st.session_state:
-        st.session_state["dados_adicionais"] = {
-            task: {"Responsável": "N/A", "Status": "Pendente", "Notas": ""}
-            for task in tasks
-        }
+    gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
 
-    # Escolha da tarefa
-    selected_task = st.sidebar.selectbox("Selecionar Tarefa para Editar", tasks)
-
-    # Formulário para edição das informações da tarefa
-    responsavel = st.sidebar.text_input("Responsável", value=st.session_state["dados_adicionais"][selected_task]["Responsável"])
-    status = st.sidebar.selectbox("Status", options=["Pendente", "Em andamento", "Concluído"],
-        index=["Pendente", "Em andamento", "Concluído"].index(st.session_state["dados_adicionais"][selected_task]["Status"]))
-    notas = st.sidebar.text_area("Notas", value=st.session_state["dados_adicionais"][selected_task]["Notas"])
-
-    # Botão para salvar dados
-    if st.sidebar.button("Salvar Dados"):
-        st.session_state["dados_adicionais"][selected_task] = {
-            "Responsável": responsavel,
-            "Status": status,
-            "Notas": notas
-        }
-        st.success(f"Dados da tarefa '{selected_task}' atualizados com sucesso!")
-
-    # Menu superior
-    st.header("IDBCOLAB - COMITÊ DE PRODUTO")
+    st.title("IDBCOLAB - COMITÊ DE PRODUTO")
     st.subheader("Cronograma do Projeto")
 
-    # Botões superiores
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("📥 Exportar Cronograma"):
-            # Lógica de exportação (opcional)
-            st.info("Exportação em breve!")
-    with col2:
-        if st.button("⚙️ Configurações"):
-            st.info("Configurações em breve!")
-    
     if nome:
         st.markdown(f"**Projeto:** {nome.upper()}")
 
-    if st.sidebar.button("🚀 GERAR CRONOGRAMA"):
+    if gerar:
         try:
-            additional_info = {t: st.session_state["dados_adicionais"][t] for t in tasks}
-            df, day_zero = calcular_cronograma_macro(data_lanc, additional_info=additional_info)
-            fig = criar_grafico_macro(df, data_lanc, color_sequence=px.colors.sequential.Viridis)
+            df, day_zero = calcular_cronograma_macro(data_lanc)
+            fig = criar_grafico_macro(df, data_lanc, color_sequence=color_sequence)
             st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
 
             inicio_projeto = df["Início"].min()
