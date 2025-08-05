@@ -30,10 +30,14 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info=No
     df = pd.DataFrame(records)
     df["Início"] = pd.to_datetime(df["Início"])
     df["Término"] = pd.to_datetime(df["Término"])
+
+    # Inverter a ordem das tarefas para que apareçam de cima para baixo
+    df["Ordem"] = range(len(df), 0, -1)
+    df = df.sort_values("Ordem")
     return df
 
 def criar_grafico_gantt(df: pd.DataFrame, data_lanc: datetime.date):
-    # Preparar tarefas no formato esperado pelo create_gantt
+    # Preparar tarefas
     tasks = []
     for _, row in df.iterrows():
         tasks.append(dict(
@@ -43,45 +47,47 @@ def criar_grafico_gantt(df: pd.DataFrame, data_lanc: datetime.date):
             Resource=row['Responsável']
         ))
 
-    # Criar o gráfico de Gantt
+    # Criar gráfico de Gantt
     fig = ff.create_gantt(
         tasks,
         group_tasks=True,
-        show_colorbar=True,
+        show_colorbar=False,
         bar_width=0.4,
         height=700,
         index_col='Task'
     )
 
-    # Marcos: início do projeto, hoje, lançamento, início de obras
+    # Marcos
     inicio_projeto = df["Início"].min()
     hoje = datetime.date.today()
     lancamento = data_lanc
     inicio_obras = lancamento + datetime.timedelta(days=120)
 
-    marcar = [
+    marcadores = [
         ("INÍCIO DO PROJETO", inicio_projeto, "green"),
         ("HOJE", hoje, "red"),
         ("LANÇAMENTO", lancamento, "blue"),
-        ("INÍCIO DE OBRAS", inicio_obras, "purple"),
+        ("INÍCIO DE OBRAS", inicio_obras, "purple")
     ]
 
-    for label, x, color in marcar:
-        # Linha
+    # Adicionar linhas e títulos dos marcos na parte superior
+    y_top = len(df)+0.5
+    for label, x, color in marcadores:
+        # Linha vertical
         fig.add_shape({
             "type": "line",
             "x0": x,
             "x1": x,
             "y0": 0,
-            "y1": len(df)+0.5,
+            "y1": y_top,
             "xref": "x",
             "yref": "y",
-            "line": {"color": color, "width": 2, "dash": "dot"},
+            "line": {"color": color, "width": 2, "dash": "dot"}
         })
-        # Anotação
+        # Texto na parte superior
         fig.add_annotation({
             "x": x,
-            "y": len(df)+0.5,
+            "y": y_top,
             "text": label,
             "showarrow": False,
             "xref": "x",
@@ -91,7 +97,7 @@ def criar_grafico_gantt(df: pd.DataFrame, data_lanc: datetime.date):
             "yanchor": "bottom"
         })
 
-    # Configurar eixo X: dias, meses
+    # Eixo X: meses
     max_date = df["Término"].max()
     if max_date.day != 1:
         next_month = (max_date.replace(day=1) + pd.Timedelta(days=32)).replace(day=1)
@@ -109,7 +115,7 @@ def criar_grafico_gantt(df: pd.DataFrame, data_lanc: datetime.date):
         month = (current_month.month % 12) + 1
         current_month = current_month.replace(year=year, month=month)
 
-    # Layout final
+    # Layout
     fig.update_layout({
         "xaxis": {
             "tickmode": "array",
@@ -120,7 +126,7 @@ def criar_grafico_gantt(df: pd.DataFrame, data_lanc: datetime.date):
             "gridcolor": "lightgray",
         },
         "yaxis": {
-            "autorange": "reversed",
+            "autorange": "reversed",  # tarefas de cima para baixo
             "showgrid": True,
             "gridcolor": "lightgray",
         },
@@ -128,6 +134,32 @@ def criar_grafico_gantt(df: pd.DataFrame, data_lanc: datetime.date):
         "height": 700,
         "showlegend": False,
     })
+
+    # Adicionar datas ao lado da barra
+    annotations = []
+    for _, row in df.iterrows():
+        annotations.append(dict(
+            x=row['Início'],
+            y=row['Ordem'],  # posição na escala invertida
+            text=f"<b>{row['Início'].strftime('%d/%m/%Y')}</b>",
+            showarrow=False,
+            xanchor='right',
+            yanchor='middle',
+            font={"size": 10}
+        ))
+        annotations.append(dict(
+            x=row['Término'],
+            y=row['Ordem'],
+            text=f"<b>{row['Término'].strftime('%d/%m/%Y')}</b>",
+            showarrow=False,
+            xanchor='left',
+            yanchor='middle',
+            font={"size": 10}
+        ))
+
+    # Inserir as anotações
+    for ann in annotations:
+        fig.add_annotation(ann)
 
     return fig
 
@@ -138,12 +170,11 @@ def main():
         use_container_width=True
     )
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
-    # aqui adicionamos a key exclusiva
+    # Adicione key exclusiva aos widgets
     nome = st.sidebar.text_input("📝 Nome do Projeto", key='nome_projeto_input')
     data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD-MM-YYYY", key='data_lancamento')
 
     st.sidebar.markdown("## Opções de Personalização")
-    # Cores definidas explicitamente
     color_palettes = {
         "Default": None,
         "Viridis": ["#440154", "#21908d", "#fde725"],
@@ -176,7 +207,7 @@ def main():
         fig = criar_grafico_gantt(df, data_lanc)
         st.plotly_chart(fig, use_container_width=True)
 
-        # Mostra métricas de datas
+        # Métricas
         hoje = datetime.date.today()
         inicio_projeto = df["Início"].min()
         lancamento = data_lanc
