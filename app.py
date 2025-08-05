@@ -1,57 +1,7 @@
-import datetime
-import pandas as pd
-import plotly.express as px
-import streamlit as st
-
-def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: dict = None) -> tuple:
-    offsets = {
-        "CONCEPÇÃO DO PRODUTO": (0, 180),
-        "INCORPORAÇÃO": (180, 420),
-        "ANTEPROJETOS": (240, 390),
-        "PROJETOS EXECUTIVOS": (330, 660),
-        "ORÇAMENTO": (390, 690),
-        "PLANEJAMENTO": (435, 720),
-        "LANÇAMENTO": (240, 540),
-        "PRÉ-OBRA": (420, 720),
-    }
-    
-    day_zero = data_lancamento - datetime.timedelta(days=offsets["LANÇAMENTO"][1])
-    records = []
-
-    for tarefa, (i0, i1) in offsets.items():
-        start = day_zero + datetime.timedelta(days=i0)
-        end = day_zero + datetime.timedelta(days=i1)
-        record = {"Tarefa": tarefa.upper(), "Início": start, "Término": end}
-        if additional_info and tarefa.upper() in additional_info:
-            record.update(additional_info[tarefa.upper()])
-        else:
-            record.update({"Responsável": "N/A", "Status": "Pendente", "Notas": ""})
-        records.append(record)
-
-    tarefas_ordenadas = [
-        "CONCEPÇÃO DO PRODUTO", 
-        "INCORPORAÇÃO", 
-        "ANTEPROJETOS", 
-        "PROJETOS EXECUTIVOS", 
-        "ORÇAMENTO", 
-        "PLANEJAMENTO", 
-        "LANÇAMENTO", 
-        "PRÉ-OBRA"
-    ]
-
-    df = pd.DataFrame(records)
-    df["Início"] = pd.to_datetime(df["Início"])
-    df["Término"] = pd.to_datetime(df["Término"])
-    df["Tarefa"] = pd.Categorical(df["Tarefa"], categories=tarefas_ordenadas, ordered=True)
-    df = df.sort_values("Tarefa").reset_index(drop=True)
-
-    return df, day_zero
-
 def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequence=None) -> px.timeline:
     hoje = datetime.date.today()
     lancamento = data_lanc
     inicio_projeto = df["Início"].min()
-    # Define o final do gráfico considerando o último término + um mês
     max_date = df["Término"].max()
     if max_date.day != 1:
         next_month = (max_date.replace(day=1) + pd.Timedelta(days=32)).replace(day=1)
@@ -59,19 +9,18 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         next_month = max_date
     total_months = (next_month.year - inicio_projeto.year) * 12 + (next_month.month - inicio_projeto.month) + 1
     end_period = (inicio_projeto + pd.DateOffset(months=total_months))
-
-    # Criar lista de ticks para cada mês
+    
+    # lista de ticks mensal
     tickvals = []
     ticktext = []
     current_month = inicio_projeto.replace(day=1)
     for i in range(total_months):
         tickvals.append(current_month)
         ticktext.append(f"MÊS {i+1:02d}")
-        # avançar para o próximo mês
         year = current_month.year + (current_month.month // 12)
         month = (current_month.month % 12) + 1
         current_month = current_month.replace(year=year, month=month)
-
+    
     fig = px.timeline(
         df,
         x_start="Início",
@@ -128,6 +77,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         yanchor="bottom"
     )
 
+    # Lançamento
     fig.add_shape(
         type="line",
         x0=lancamento,
@@ -150,8 +100,8 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         yanchor="bottom"
     )
 
-    # Início das obras
     inicio_obras = lancamento + datetime.timedelta(days=120)
+    # Início de obras
     fig.add_shape(
         type="line",
         x0=inicio_obras,
@@ -174,7 +124,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         yanchor="bottom"
     )
 
-    # Configura o eixo X: intervalos mensais, formato MM-YY
+    # Configura eixo X com todos os meses
     fig.update_xaxes(
         tickvals=tickvals,
         ticktext=ticktext,
@@ -182,10 +132,10 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         range=[inicio_projeto, end_period],
         showgrid=True,
         gridcolor="lightgray",
-        dtick="M1"  # marca de um mês
+        dtick="M1"
     )
 
-    # Linha de grade em cada tarefa
+    # Linhas horizontais para cada tarefa
     fig.update_yaxes(
         showgrid=True,
         gridcolor="lightgray",
@@ -213,7 +163,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 layer="below"
             )
 
-    # Datas das tarefas sempre visíveis, deslocadas pra fora
+    # Datas sempre visíveis, deslocadas pra fora
     deslocamento = pd.Timedelta(days=3)
     annotations = []
     for _, row in df.iterrows():
@@ -239,6 +189,10 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 xanchor="left",
                 yanchor="middle"
             ))
+
+    # Garantir que as anotações das primeiras tarefas apareçam
+    # Ajuste de deslocamento para tarefas com início próximo ou igual ao zero
+    # já foram tratados ao usar deslocamento genérico
     fig.update_layout(
         annotations=annotations,
         margin=dict(l=250, r=40, t=20, b=40),
