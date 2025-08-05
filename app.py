@@ -40,7 +40,7 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
     ]
 
     df = pd.DataFrame(records)
-    # Plotly precisa de datetime64[ns]
+    # Conversão importante para plotly
     df["Início"] = pd.to_datetime(df["Início"])
     df["Término"] = pd.to_datetime(df["Término"])
     df["Tarefa"] = pd.Categorical(df["Tarefa"], categories=tarefas_ordenadas, ordered=True)
@@ -48,7 +48,7 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
 
     return df, day_zero
 
-def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_sequence=None) -> px.timeline:
+def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequence=None) -> px.timeline:
     fig = px.timeline(
         df,
         x_start="Início",
@@ -60,21 +60,22 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # --- MARCOS SUPERIORES ---
+    # Marco: INÍCIO DO PROJETO
     fig.add_shape(
-        type="line", x0=data_lancamento, x1=data_lancamento,
+        type="line", x0=data_lanc, x1=data_lanc,
         y0=0, y1=1, xref="x", yref="paper",
         line=dict(color="green", width=2, dash="dot"),
     )
     fig.add_annotation(
-        x=data_lancamento, y=1,
+        x=data_lanc, y=1,
         xref="x", yref="paper",
         text="INÍCIO DO PROJETO",
-        font=dict(color="green", size=12, family='Arial Black'),
+        font=dict(color="green", size=12),
         showarrow=False,
         xanchor="center", yanchor="bottom"
     )
 
+    # Marco: HOJE
     hoje = datetime.date.today()
     fig.add_shape(
         type="line", x0=hoje, x1=hoje,
@@ -85,12 +86,13 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         x=hoje, y=1,
         xref="x", yref="paper",
         text="HOJE",
-        font=dict(color="red", size=12, family='Arial Black'),
+        font=dict(color="red", size=12),
         showarrow=False,
         xanchor="center", yanchor="bottom"
     )
 
-    lancamento = data_lancamento + datetime.timedelta(days=120)
+    # Marco: LANÇAMENTO
+    lancamento = data_lanc
     fig.add_shape(
         type="line", x0=lancamento, x1=lancamento,
         y0=0, y1=1, xref="x", yref="paper",
@@ -100,12 +102,13 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         x=lancamento, y=1,
         xref="x", yref="paper",
         text="LANÇAMENTO",
-        font=dict(color="blue", size=12, family='Arial Black'),
+        font=dict(color="blue", size=12),
         showarrow=False,
         xanchor="center", yanchor="bottom"
     )
 
-    inicio_obras = data_lancamento + datetime.timedelta(days=120)
+    # Marco: INÍCIO DE OBRAS (AGORA CORRETO: 120 DIAS APÓS O LANÇAMENTO)
+    inicio_obras = data_lanc + datetime.timedelta(days=120)
     fig.add_shape(
         type="line", x0=inicio_obras, x1=inicio_obras,
         y0=0, y1=1, xref="x", yref="paper",
@@ -115,28 +118,10 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         x=inicio_obras, y=1,
         xref="x", yref="paper",
         text="INÍCIO DE OBRAS",
-        font=dict(color="purple", size=12, family='Arial Black'),
+        font=dict(color="purple", size=12),
         showarrow=False,
         xanchor="center", yanchor="bottom"
     )
-
-    # Destacar as datas no eixo X
-    for data, color, label in [
-        (data_lancamento, "green", "INÍCIO DO PROJETO"),
-        (hoje, "red", "HOJE"),
-        (lancamento, "blue", "LANÇAMENTO"),
-        (inicio_obras, "purple", "INÍCIO DE OBRAS")
-    ]:
-        fig.add_annotation(
-            x=data, y=-0.1, xref="x", yref="paper",
-            text=data.strftime("%d/%m/%Y"),
-            font=dict(color=color, size=14, family='Arial Black'),
-            showarrow=False,
-            bgcolor="#fff" if color!="white" else None,
-            bordercolor=color,
-            borderwidth=2,
-            xanchor='center', yanchor='top'
-        )
 
     fig.update_yaxes(title_text=None)
     fig.update_xaxes(tickformat="%d/%m/%Y")
@@ -154,17 +139,16 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
                 line_width=0, layer="below"
             )
 
-    # --- ANOTAÇÕES DAS TAREFAS
+    # Anotações das barras
     annotations = []
     for _, row in df.iterrows():
         if pd.notnull(row["Início"]) and pd.notnull(row["Término"]):
             meio = row["Início"] + (row["Término"] - row["Início"]) / 2
-            # texto reduzido caso barra muito curta
-            text = f"<b>INÍCIO: {row['Início']:%d/%m/%Y}<br>TÉRMINO: {row['Término']:%d/%m/%Y}</b>" if (row["Término"] - row["Início"]).days > 15 else f"<b>{row['Início']:%d/%m} - {row['Término']:%d/%m}</b>"
+            text = f"<b>INÍCIO: {row['Início']:%d/%m/%Y}<br>TÉRMINO: {row['Término']:%d/%m/%Y}</b>"
             annotations.append(dict(
                 x=meio, y=row["Tarefa"], text=text,
                 showarrow=False,
-                font=dict(color="black", size=9),
+                font=dict(color="black", size=10),
                 xanchor="center", yanchor="middle"
             ))
     fig.update_layout(annotations=annotations, margin=dict(l=250, r=40, t=20, b=40), showlegend=False)
@@ -217,7 +201,7 @@ def main():
         inicio_projeto = df["Início"].min()
         hoje = datetime.date.today()
         lancamento = data_lanc
-        inicio_obras = data_lanc + datetime.timedelta(days=120)
+        inicio_obras = data_lanc + datetime.timedelta(days=120)  # <- Usando data_lanc sempre
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
