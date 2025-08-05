@@ -57,6 +57,14 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         hover_data=["Responsável", "Status", "Notas"]
     )
 
+    # Linha vertical para o início do projeto
+    inicio_projeto = data_lancamento
+    fig.add_shape(
+        type="line", x0=inicio_projeto, x1=inicio_projeto,
+        y0=0, y1=1, xref="x", yref="paper",
+        line=dict(color="green", width=2, dash="dot"),
+    )
+
     fig.update_yaxes(title_text=None, autorange="reversed")
     fig.update_xaxes(tickformat="%d/%m/%Y")
 
@@ -72,7 +80,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
                 fillcolor="lightgray", opacity=0.2,
                 line_width=0, layer="below"
             )
-    
+
     annotations = []
     for _, row in df.iterrows():
         meio = row["Início"] + (row["Término"] - row["Início"]) / 2
@@ -85,26 +93,6 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         ))
 
     fig.update_layout(annotations=annotations, margin=dict(l=250, r=40, t=40, b=40), showlegend=False)
-
-    def add_marker(date: datetime.date, label: str, color: str):
-        fig.add_shape(
-            type="line", x0=date, x1=date,
-            y0=0, y1=1, xref="x", yref="paper",
-            line=dict(color=color, width=2, dash="dot")
-        )
-        fig.add_annotation(
-            x=date, y=0, xref="x", yref="paper",
-            text=f"<b>{label.upper()}</b>",
-            showarrow=False, textangle=-90,
-            font=dict(color="black", size=10),
-            xanchor="left", yanchor="bottom", xshift=5
-        )
-
-    hoje = datetime.date.today()
-    inicio_obras = data_lancamento + datetime.timedelta(days=120)
-    add_marker(hoje, "HOJE", "red")
-    add_marker(data_lancamento, "LANÇAMENTO", "blue")
-    add_marker(inicio_obras, "INÍCIO DE OBRAS", "orange")
 
     return fig
 
@@ -123,9 +111,15 @@ def main():
         "Plotly": px.colors.qualitative.Plotly,
         "Dark2": px.colors.qualitative.Dark2
     }
-    selected_palette = st.sidebar.selectbox("Selecione a paleta de cores", list(color_palettes.keys()))
-    color_sequence = color_palettes[selected_palette]
 
+    if "selected_palette" not in st.session_state:
+        st.session_state.selected_palette = "Default"
+
+    selected_palette = st.sidebar.selectbox("Selecione a paleta de cores", list(color_palettes.keys()))
+    if selected_palette != st.session_state.selected_palette:
+        st.session_state.selected_palette = selected_palette
+
+    color_sequence = color_palettes[st.session_state.selected_palette]
     gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
 
     st.title("IDBCOLAB - COMITÊ DE PRODUTO")
@@ -135,35 +129,31 @@ def main():
         st.markdown(f"**Projeto:** {nome.upper()}")
 
     if gerar:
-        try:
-            df, day_zero = calcular_cronograma_macro(data_lanc)
-            fig = criar_grafico_macro(df, data_lanc, color_sequence=color_sequence)
-            st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
+        # Calcular cronograma e armazenar no session state
+        df, day_zero = calcular_cronograma_macro(data_lanc)
+        st.session_state.data_frame = df  # Armazena o DataFrame no session_state
+        fig = criar_grafico_macro(df, data_lanc, color_sequence=color_sequence)
+        st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
 
-            inicio_projeto = df["Início"].min()
-            hoje = datetime.date.today()
-            lancamento = data_lanc
-            inicio_obras = data_lanc + datetime.timedelta(days=120)
+        # Exibir métricas
+        inicio_projeto = df["Início"].min()
+        hoje = datetime.date.today()
+        lancamento = data_lanc
+        inicio_obras = data_lanc + datetime.timedelta(days=120)
 
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("**INÍCIO DO PROJETO**", inicio_projeto.strftime("%d/%m/%Y"))
-            with col2:
-                st.metric("**HOJE**", hoje.strftime("%d/%m/%Y"))
-            with col3:
-                st.metric("**LANÇAMENTO**", lancamento.strftime("%d/%m/%Y"))
-            with col4:
-                st.metric("**INÍCIO DE OBRAS**", inicio_obras.strftime("%d/%m/%Y"))
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("**INÍCIO DO PROJETO**", inicio_projeto.strftime("%d/%m/%Y"))
+        with col2:
+            st.metric("**HOJE**", hoje.strftime("%d/%m/%Y"))
+        with col3:
+            st.metric("**LANÇAMENTO**", lancamento.strftime("%d/%m/%Y"))
+        with col4:
+            st.metric("**INÍCIO DE OBRAS**", inicio_obras.strftime("%d/%m/%Y"))
 
-            @st.cache_data
-            def convert_df(df):
-                return df.to_csv(index=False).encode('utf-8')
-
-            csv_data = convert_df(df)
-            st.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
-
-        except Exception as e:
-            st.error(f"❌ ERRO: {e}")
+        # Botão para baixar o cronograma
+        csv_data = df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
     else:
         st.info("Preencha o nome e a data de lançamento, depois clique em GERAR CRONOGRAMA.")
 
