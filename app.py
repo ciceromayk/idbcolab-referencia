@@ -57,8 +57,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Adicionando marcos verticais com anotações ajustadas
-    marco_ay = -60  # Ajuste se precisar dar mais espaço
+    marco_ay = -60  # Mais negativo afasta mais do topo
     fig.add_shape(
         type="line", x0=data_lancamento, x1=data_lancamento,
         y0=0, y1=1, xref="x", yref="paper",
@@ -90,7 +89,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         xanchor="center", yanchor="top"
     )
 
-    lancamento = data_lancamento + datetime.timedelta(days=120)  # Lançamento em 120 dias
+    lancamento = data_lancamento + datetime.timedelta(days=120)
     fig.add_shape(
         type="line", x0=lancamento, x1=lancamento,
         y0=0, y1=1, xref="x", yref="paper",
@@ -122,7 +121,6 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         xanchor="center", yanchor="top"
     )
 
-    # Ordem natural (concepção em cima, pré-obra embaixo)
     fig.update_yaxes(title_text=None)
     fig.update_xaxes(tickformat="%d/%m/%Y")
 
@@ -139,7 +137,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
                 line_width=0, layer="below"
             )
 
-    # Anotações de início/término só se houver valores válidos
+    # Anotações das tarefas (só se houver datas)
     annotations = []
     for _, row in df.iterrows():
         if pd.notnull(row["Início"]) and pd.notnull(row["Término"]):
@@ -158,7 +156,10 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
 def main():
     st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
 
-    st.sidebar.image("ciceromayk/idbcolab-referencia/LOGO IDBCOLAB.png", use_column_width=True)
+    st.sidebar.image(
+        "https://raw.githubusercontent.com/ciceromayk/idbcolab-referencia/main/LOGO%20IDBCOLAB.png",
+        use_container_width=True
+    )
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
     nome = st.sidebar.text_input("📝 Nome do Projeto")
     data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD/MM/YYYY")
@@ -178,31 +179,25 @@ def main():
     selected_palette = st.sidebar.selectbox("Selecione a paleta de cores", list(color_palettes.keys()))
     if selected_palette != st.session_state.selected_palette:
         st.session_state.selected_palette = selected_palette
-        st.session_state.gerar_grafico = True  # Força a regeneração do gráfico
+        st.session_state.gerar_grafico = True
 
     color_sequence = color_palettes[st.session_state.selected_palette]
     
     gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
 
-    # Cabeçalho
     st.title("IDBCOLAB - COMITÊ DE PRODUTO")
     st.subheader("Cronograma do Projeto")
 
     if nome:
         st.markdown(f"**Projeto:** {nome.upper()}")
 
-    # Garante que o gráfico seja gerado se a paleta for alterada ou o botão gerar for clicado
     if gerar or ("gerar_grafico" in st.session_state and st.session_state.gerar_grafico):
-        # Calcular cronograma
         df, day_zero = calcular_cronograma_macro(data_lanc)
-
-        # Armazenar DataFrame
         st.session_state.data_frame = df  
         
         fig = criar_grafico_macro(df, data_lanc, color_sequence=color_sequence)
         st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
 
-        # Exibir métricas
         inicio_projeto = df["Início"].min()
         hoje = datetime.date.today()
         lancamento = data_lanc
@@ -218,7 +213,6 @@ def main():
         with col4:
             st.metric("**INÍCIO DE OBRAS**", inicio_obras.strftime("%d/%m/%Y"))
 
-        # Botão para baixar o cronograma
         csv_data = df.to_csv(index=False).encode('utf-8-sig')
         st.sidebar.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
 
