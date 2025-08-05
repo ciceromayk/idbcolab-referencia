@@ -58,7 +58,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     )
 
     # Adicionando marcos verticais com anotações ajustadas
-    marco_ay = -60  # Use valor negativo maior se necessário para evitar corte
+    marco_ay = -60  # Ajuste se precisar dar mais espaço
     fig.add_shape(
         type="line", x0=data_lancamento, x1=data_lancamento,
         y0=0, y1=1, xref="x", yref="paper",
@@ -122,7 +122,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         xanchor="center", yanchor="top"
     )
 
-    # Retira reversão para ordem natural (concepção em cima, pré-obra embaixo)
+    # Ordem natural (concepção em cima, pré-obra embaixo)
     fig.update_yaxes(title_text=None)
     fig.update_xaxes(tickformat="%d/%m/%Y")
 
@@ -158,7 +158,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
 def main():
     st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
 
-    st.sidebar.image("idbcolab-referencia/LOGO IDBCOLAB.png", use_column_width=True)
+    st.sidebar.image("ciceromayk/idbcolab-referencia/LOGO IDBCOLAB.png", use_column_width=True)
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
     nome = st.sidebar.text_input("📝 Nome do Projeto")
     data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD/MM/YYYY")
