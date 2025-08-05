@@ -28,7 +28,6 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
             record.update({"Responsável": "N/A", "Status": "Pendente", "Notas": ""})
         records.append(record)
 
-    df = pd.DataFrame(records)
     tarefas_ordenadas = [
         "CONCEPÇÃO DO PRODUTO", 
         "INCORPORAÇÃO", 
@@ -39,7 +38,8 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
         "LANÇAMENTO", 
         "PRÉ-OBRA"
     ]
-    
+
+    df = pd.DataFrame(records)
     df["Tarefa"] = pd.Categorical(df["Tarefa"], categories=tarefas_ordenadas, ordered=True)
     df = df.sort_values("Tarefa").reset_index(drop=True)
 
@@ -57,21 +57,21 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Adicionando marcos verticais com anotações na base e texto vertical modificado para -90
-    inicio_projeto = data_lancamento
+    # Adicionando marcos verticais com anotações ajustadas
+    marco_ay = -60  # Use valor negativo maior se necessário para evitar corte
     fig.add_shape(
-        type="line", x0=inicio_projeto, x1=inicio_projeto,
+        type="line", x0=data_lancamento, x1=data_lancamento,
         y0=0, y1=1, xref="x", yref="paper",
         line=dict(color="green", width=2, dash="dot"),
     )
     fig.add_annotation(
-        x=inicio_projeto, y=0,
+        x=data_lancamento, y=0,
         xref="x", yref="paper",
         text="INÍCIO DO PROJETO",
-        showarrow=True, arrowhead=2, ax=0, ay=40,
+        showarrow=True, arrowhead=2, ax=0, ay=marco_ay,
         font=dict(color="green", size=12),
         textangle=-90,
-        xanchor="center", yanchor="bottom"
+        xanchor="center", yanchor="top"
     )
 
     hoje = datetime.date.today()
@@ -84,10 +84,10 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         x=hoje, y=0,
         xref="x", yref="paper",
         text="HOJE",
-        showarrow=True, arrowhead=2, ax=0, ay=40,
+        showarrow=True, arrowhead=2, ax=0, ay=marco_ay,
         font=dict(color="red", size=12),
         textangle=-90,
-        xanchor="center", yanchor="bottom"
+        xanchor="center", yanchor="top"
     )
 
     lancamento = data_lancamento + datetime.timedelta(days=120)  # Lançamento em 120 dias
@@ -100,10 +100,10 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         x=lancamento, y=0,
         xref="x", yref="paper",
         text="LANÇAMENTO",
-        showarrow=True, arrowhead=2, ax=0, ay=40,
+        showarrow=True, arrowhead=2, ax=0, ay=marco_ay,
         font=dict(color="blue", size=12),
         textangle=-90,
-        xanchor="center", yanchor="bottom"
+        xanchor="center", yanchor="top"
     )
 
     inicio_obras = data_lancamento + datetime.timedelta(days=120)
@@ -116,13 +116,14 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         x=inicio_obras, y=0,
         xref="x", yref="paper",
         text="INÍCIO DE OBRAS",
-        showarrow=True, arrowhead=2, ax=0, ay=40,
+        showarrow=True, arrowhead=2, ax=0, ay=marco_ay,
         font=dict(color="purple", size=12),
         textangle=-90,
-        xanchor="center", yanchor="bottom"
+        xanchor="center", yanchor="top"
     )
 
-    fig.update_yaxes(title_text=None, autorange="reversed")
+    # Retira reversão para ordem natural (concepção em cima, pré-obra embaixo)
+    fig.update_yaxes(title_text=None)
     fig.update_xaxes(tickformat="%d/%m/%Y")
 
     n = len(df)
@@ -137,18 +138,19 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
                 fillcolor="lightgray", opacity=0.2,
                 line_width=0, layer="below"
             )
-    
+
+    # Anotações de início/término só se houver valores válidos
     annotations = []
     for _, row in df.iterrows():
-        meio = row["Início"] + (row["Término"] - row["Início"]) / 2
-        text = f"<b>INÍCIO: {row['Início']:%d/%m/%Y}<br>TÉRMINO: {row['Término']:%d/%m/%Y}</b>"
-        annotations.append(dict(
-            x=meio, y=row["Tarefa"], text=text,
-            showarrow=False,
-            font=dict(color="black", size=10),
-            xanchor="center", yanchor="middle"
-        ))
-
+        if pd.notnull(row["Início"]) and pd.notnull(row["Término"]):
+            meio = row["Início"] + (row["Término"] - row["Início"]) / 2
+            text = f"<b>INÍCIO: {row['Início']:%d/%m/%Y}<br>TÉRMINO: {row['Término']:%d/%m/%Y}</b>"
+            annotations.append(dict(
+                x=meio, y=row["Tarefa"], text=text,
+                showarrow=False,
+                font=dict(color="black", size=10),
+                xanchor="center", yanchor="middle"
+            ))
     fig.update_layout(annotations=annotations, margin=dict(l=250, r=40, t=20, b=40), showlegend=False)
 
     return fig
@@ -156,6 +158,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
 def main():
     st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
 
+    st.sidebar.image("idbcolab-referencia/LOGO IDBCOLAB.png", use_column_width=True)
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
     nome = st.sidebar.text_input("📝 Nome do Projeto")
     data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD/MM/YYYY")
@@ -173,8 +176,6 @@ def main():
         st.session_state.selected_palette = "Default"
 
     selected_palette = st.sidebar.selectbox("Selecione a paleta de cores", list(color_palettes.keys()))
-    
-    # Verifica se a paleta foi alterada
     if selected_palette != st.session_state.selected_palette:
         st.session_state.selected_palette = selected_palette
         st.session_state.gerar_grafico = True  # Força a regeneração do gráfico
@@ -191,7 +192,7 @@ def main():
         st.markdown(f"**Projeto:** {nome.upper()}")
 
     # Garante que o gráfico seja gerado se a paleta for alterada ou o botão gerar for clicado
-    if gerar or "gerar_grafico" in st.session_state and st.session_state.gerar_grafico:
+    if gerar or ("gerar_grafico" in st.session_state and st.session_state.gerar_grafico):
         # Calcular cronograma
         df, day_zero = calcular_cronograma_macro(data_lanc)
 
@@ -218,10 +219,9 @@ def main():
             st.metric("**INÍCIO DE OBRAS**", inicio_obras.strftime("%d/%m/%Y"))
 
         # Botão para baixar o cronograma
-        csv_data = df.to_csv(index=False).encode('utf-8-sig')  # Usando 'utf-8-sig' para garantir a codificação correta
+        csv_data = df.to_csv(index=False).encode('utf-8-sig')
         st.sidebar.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
 
-        # Limpa o estado de "gerar_grafico"
         if "gerar_grafico" in st.session_state:
             del st.session_state.gerar_grafico
 
