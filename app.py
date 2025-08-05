@@ -22,7 +22,7 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
         start = day_zero + datetime.timedelta(days=i0)
         end = day_zero + datetime.timedelta(days=i1)
         record = {"Tarefa": tarefa.upper(), "Início": start, "Término": end}
-        # Inclui informações adicionais se fornecidas, senão usa padrões
+        # Incorpora as informações adicionais se houver; caso contrário, usa valores padrão
         if additional_info and tarefa.upper() in additional_info:
             record.update(additional_info[tarefa.upper()])
         else:
@@ -31,7 +31,7 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
 
     df = pd.DataFrame(records)
     
-    # Ordenar as tarefas conforme pré-definido
+    # Ordena as tarefas conforme a ordem desejada
     tarefas_ordenadas = [
         "CONCEPÇÃO DO PRODUTO", 
         "INCORPORAÇÃO", 
@@ -64,20 +64,21 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     fig.update_yaxes(title_text=None, autorange="reversed")
     fig.update_xaxes(tickformat="%d/%m/%Y")
 
-    # Alterna fundo para diferenciar as linhas do gráfico
+    # Fundo alternado para diferenciar as linhas do gráfico
     n = len(df)
     for i in range(n):
         if i % 2 == 0:
             y0 = 1 - (i + 1) / n
             y1 = 1 - i / n
             fig.add_shape(
-                type="rect", xref="paper", yref="paper",
+                type="rect",
+                xref="paper", yref="paper",
                 x0=0, x1=1, y0=y0, y1=y1,
                 fillcolor="lightgray", opacity=0.2,
                 line_width=0, layer="below"
             )
 
-    # Adiciona as anotações de data (INÍCIO / TÉRMINO) dentro do gráfico
+    # Anotações INÍCIO/TÉRMINO para cada tarefa
     annotations = []
     for _, row in df.iterrows():
         meio = row["Início"] + (row["Término"] - row["Início"]) / 2
@@ -90,7 +91,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         ))
     fig.update_layout(annotations=annotations, margin=dict(l=250, r=40, t=40, b=40), showlegend=False)
 
-    # Adiciona linhas de marcador para datas importantes
+    # Linhas de marcador para datas importantes
     def add_marker(date: datetime.date, label: str, color: str):
         fig.add_shape(
             type="line", x0=date, x1=date,
@@ -115,7 +116,6 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     return fig
 
 def main():
-    # Configura a página
     st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
 
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
@@ -123,7 +123,7 @@ def main():
     data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD/MM/YYYY")
     
     # Opção 3: Seleção de paleta de cores para o gráfico
-    st.sidebar.markdown("## Opções de personalização")
+    st.sidebar.markdown("## Opções de Personalização")
     color_palettes = {
         "Default": None,
         "Viridis": px.colors.sequential.Viridis,
@@ -134,7 +134,7 @@ def main():
     selected_palette = st.sidebar.selectbox("Selecione a paleta de cores", list(color_palettes.keys()))
     color_sequence = color_palettes[selected_palette]
 
-    # Opção 5: Informações adicionais para cada tarefa
+    # Lista de tarefas conforme a ordem desejada
     tarefas_ordenadas = [
         "CONCEPÇÃO DO PRODUTO", 
         "INCORPORAÇÃO", 
@@ -145,15 +145,39 @@ def main():
         "LANÇAMENTO", 
         "PRÉ-OBRA"
     ]
-    with st.sidebar.expander("Informações adicionais para cada tarefa", expanded=False):
-        dados_adicionais = {}
-        for tarefa in tarefas_ordenadas:
-            st.markdown(f"**{tarefa}**")
-            resp = st.text_input(f"Responsável", value="N/A", key=f"resp_{tarefa}")
-            status = st.selectbox("Status", ["Pendente", "Em andamento", "Concluído"], key=f"status_{tarefa}")
-            notas = st.text_area("Notas", value="", key=f"notas_{tarefa}")
-            dados_adicionais[tarefa] = {"Responsável": resp, "Status": status, "Notas": notas}
-    
+
+    # Inicializa os dados adicionais no session_state, se ainda não existirem
+    if "dados_adicionais" not in st.session_state:
+        st.session_state["dados_adicionais"] = {}
+
+    # Opção 5: Informações adicionais para cada tarefa usando dropdown e formulário
+    st.sidebar.markdown("## Informações Adicionais")
+    selected_task = st.sidebar.selectbox("Selecione a tarefa para atualizar", tarefas_ordenadas, key="selected_task")
+
+    with st.sidebar.form(key="info_form"):
+        st.write(f"Atualize as informações para: **{selected_task}**")
+        # Obtém os dados já inseridos para a tarefa ou usa valores padrão
+        current_info = st.session_state["dados_adicionais"].get(
+            selected_task, {"Responsável": "N/A", "Status": "Pendente", "Notas": ""}
+        )
+        responsavel = st.text_input("Responsável", value=current_info["Responsável"], key="responsavel_input")
+        status = st.selectbox(
+            "Status",
+            options=["Pendente", "Em andamento", "Concluído"],
+            index=["Pendente", "Em andamento", "Concluído"].index(current_info["Status"]) if current_info["Status"] in ["Pendente", "Em andamento", "Concluído"] else 0,
+            key="status_input"
+        )
+        notas = st.text_area("Notas", value=current_info["Notas"], key="notas_input")
+        submit_info = st.form_submit_button("Adicionar/Atualizar informações")
+
+    if submit_info:
+        st.session_state["dados_adicionais"][selected_task] = {
+            "Responsável": responsavel,
+            "Status": status,
+            "Notas": notas
+        }
+        st.success(f"Informações atualizadas para {selected_task}")
+
     gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
 
     st.title("IDBCOLAB - COMITÊ DE PRODUTO")
@@ -164,13 +188,13 @@ def main():
 
     if gerar:
         try:
-            # Calcula o cronograma incluindo as informações adicionais
-            df, day_zero = calcular_cronograma_macro(data_lanc, additional_info=dados_adicionais)
+            # Calcula o cronograma utilizando as informações adicionais armazenadas
+            df, day_zero = calcular_cronograma_macro(data_lanc, additional_info=st.session_state["dados_adicionais"])
             fig = criar_grafico_macro(df, data_lanc, color_sequence=color_sequence)
             st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
 
-            # Exibe os cartões com datas importantes
-            inicio_projeto = df['Início'].min()
+            # Exibição dos cartões com datas importantes
+            inicio_projeto = df["Início"].min()
             hoje = datetime.date.today()
             lancamento = data_lanc
             inicio_obras = data_lanc + datetime.timedelta(days=120)
@@ -185,10 +209,10 @@ def main():
             with col4:
                 st.metric("**INÍCIO DE OBRAS**", inicio_obras.strftime("%d/%m/%Y"))
 
-            # Opção 4: Botão para exportar o cronograma em CSV
+            # Opção 4: Botão para exportar o cronograma em formato CSV
             @st.cache_data
             def convert_df(df):
-                return df.to_csv(index=False).encode('utf-8')
+                return df.to_csv(index=False).encode("utf-8")
 
             csv_data = convert_df(df)
             st.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
@@ -200,4 +224,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
