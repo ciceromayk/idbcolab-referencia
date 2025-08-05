@@ -149,4 +149,53 @@ def main():
     with st.expander("Editar Dados Adicionais"):
         edited_df = st.experimental_data_editor(st.session_state["dados_adicionais"], num_rows="fixed")
         if st.button("Salvar Alterações"):
-            st.session_state
+            st.session_state["dados_adicionais"] = edited_df
+            st.success("Dados adicionais salvos")
+
+    gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
+
+    st.title("IDBCOLAB - COMITÊ DE PRODUTO")
+    st.subheader("Cronograma do Projeto")
+
+    if nome:
+        st.markdown(f"**Projeto:** {nome.upper()}")
+
+    if gerar:
+        try:
+            additional_info_df = st.session_state["dados_adicionais"].copy()
+            additional_info_df["Tarefa"] = additional_info_df["Tarefa"].str.upper()
+            additional_info = additional_info_df.set_index("Tarefa")[["Responsável", "Status", "Notas"]].to_dict(orient="index")
+
+            df, day_zero = calcular_cronograma_macro(data_lanc, additional_info=additional_info)
+            fig = criar_grafico_macro(df, data_lanc, color_sequence=color_sequence)
+            st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
+            
+            inicio_projeto = df["Início"].min()
+            hoje = datetime.date.today()
+            lancamento = data_lanc
+            inicio_obras = data_lanc + datetime.timedelta(days=120)
+
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("**INÍCIO DO PROJETO**", inicio_projeto.strftime("%d/%m/%Y"))
+            with col2:
+                st.metric("**HOJE**", hoje.strftime("%d/%m/%Y"))
+            with col3:
+                st.metric("**LANÇAMENTO**", lancamento.strftime("%d/%m/%Y"))
+            with col4:
+                st.metric("**INÍCIO DE OBRAS**", inicio_obras.strftime("%d/%m/%Y"))
+
+            @st.cache_data
+            def convert_df(df):
+                return df.to_csv(index=False).encode("utf-8")
+
+            csv_data = convert_df(df)
+            st.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
+            
+        except Exception as e:
+            st.error(f"❌ ERRO: {e}")
+    else:
+        st.info("Preencha o nome e a data de lançamento, depois clique em GERAR CRONOGRAMA.")
+
+if __name__ == "__main__":
+    main()
