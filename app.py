@@ -121,8 +121,15 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         xanchor="center", yanchor="bottom"
     )
 
-    fig.update_yaxes(title_text=None)
-    fig.update_xaxes(tickformat="%d/%m/%Y")
+    # EIXO X: meses/ano + linha de grade vertical
+    fig.update_xaxes(
+        tickformat="%b/%Y",  # Ex: Jan/2025
+        showgrid=True,
+        gridcolor="lightgray",
+    )
+
+    # Eixo Y: título maior
+    fig.update_yaxes(title_text=None, title_font={'size': 16})
 
     n = len(df)
     for i in range(n):
@@ -137,27 +144,31 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 line_width=0, layer="below"
             )
 
-    # Anotações: início à esquerda, término à direita
+    # Anotações: início à ESQUERDA, término à DIREITA, fora das barras, fonte 12pt
+    deslocamento = pd.Timedelta(days=3)  # desloca data pra fora da barra
     annotations = []
     for _, row in df.iterrows():
-        if pd.notnull(row["Início"]) and pd.notnull(row["Término"]):
-            # Data de início à esquerda
+        if pd.notnull(row["Início"]):
             annotations.append(dict(
-                x=row["Início"], y=row["Tarefa"],
+                x=row["Início"] - deslocamento, y=row["Tarefa"],
                 text=f"<b>{row['Início']:%d/%m/%Y}</b>",
                 showarrow=False,
-                font=dict(color="black", size=10),
-                xanchor="left", yanchor="middle"
-            ))
-            # Data de término à direita
-            annotations.append(dict(
-                x=row["Término"], y=row["Tarefa"],
-                text=f"<b>{row['Término']:%d/%m/%Y}</b>",
-                showarrow=False,
-                font=dict(color="black", size=10),
+                font=dict(color="black", size=12),
                 xanchor="right", yanchor="middle"
             ))
-    fig.update_layout(annotations=annotations, margin=dict(l=250, r=40, t=20, b=40), showlegend=False)
+        if pd.notnull(row["Término"]):
+            annotations.append(dict(
+                x=row["Término"] + deslocamento, y=row["Tarefa"],
+                text=f"<b>{row['Término']:%d/%m/%Y}</b>",
+                showarrow=False,
+                font=dict(color="black", size=12),
+                xanchor="left", yanchor="middle"
+            ))
+    fig.update_layout(
+        annotations=annotations,
+        margin=dict(l=250, r=40, t=20, b=40),
+        showlegend=False
+    )
 
     return fig
 
