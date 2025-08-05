@@ -40,6 +40,10 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
     ]
 
     df = pd.DataFrame(records)
+    # --- AJUSTE CRÍTICO PARA PLOTLY ---
+    df["Início"] = pd.to_datetime(df["Início"])
+    df["Término"] = pd.to_datetime(df["Término"])
+    # ----------------------------------
     df["Tarefa"] = pd.Categorical(df["Tarefa"], categories=tarefas_ordenadas, ordered=True)
     df = df.sort_values("Tarefa").reset_index(drop=True)
 
@@ -57,20 +61,19 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    marco_ay = -60  # Mais negativo afasta mais do topo
+    # Textos de MARCOS NO TOPO, sem seta
     fig.add_shape(
         type="line", x0=data_lancamento, x1=data_lancamento,
         y0=0, y1=1, xref="x", yref="paper",
         line=dict(color="green", width=2, dash="dot"),
     )
     fig.add_annotation(
-        x=data_lancamento, y=0,
+        x=data_lancamento, y=1,
         xref="x", yref="paper",
         text="INÍCIO DO PROJETO",
-        showarrow=True, arrowhead=2, ax=0, ay=marco_ay,
         font=dict(color="green", size=12),
-        textangle=-90,
-        xanchor="center", yanchor="top"
+        showarrow=False,
+        xanchor="center", yanchor="bottom"
     )
 
     hoje = datetime.date.today()
@@ -80,13 +83,12 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         line=dict(color="red", width=2, dash="dot"),
     )
     fig.add_annotation(
-        x=hoje, y=0,
+        x=hoje, y=1,
         xref="x", yref="paper",
         text="HOJE",
-        showarrow=True, arrowhead=2, ax=0, ay=marco_ay,
         font=dict(color="red", size=12),
-        textangle=-90,
-        xanchor="center", yanchor="top"
+        showarrow=False,
+        xanchor="center", yanchor="bottom"
     )
 
     lancamento = data_lancamento + datetime.timedelta(days=120)
@@ -96,13 +98,12 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         line=dict(color="blue", width=2, dash="dot"),
     )
     fig.add_annotation(
-        x=lancamento, y=0,
+        x=lancamento, y=1,
         xref="x", yref="paper",
         text="LANÇAMENTO",
-        showarrow=True, arrowhead=2, ax=0, ay=marco_ay,
         font=dict(color="blue", size=12),
-        textangle=-90,
-        xanchor="center", yanchor="top"
+        showarrow=False,
+        xanchor="center", yanchor="bottom"
     )
 
     inicio_obras = data_lancamento + datetime.timedelta(days=120)
@@ -112,13 +113,12 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         line=dict(color="purple", width=2, dash="dot"),
     )
     fig.add_annotation(
-        x=inicio_obras, y=0,
+        x=inicio_obras, y=1,
         xref="x", yref="paper",
         text="INÍCIO DE OBRAS",
-        showarrow=True, arrowhead=2, ax=0, ay=marco_ay,
         font=dict(color="purple", size=12),
-        textangle=-90,
-        xanchor="center", yanchor="top"
+        showarrow=False,
+        xanchor="center", yanchor="bottom"
     )
 
     fig.update_yaxes(title_text=None)
@@ -155,7 +155,6 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
 
 def main():
     st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
-
     st.sidebar.image(
         "https://raw.githubusercontent.com/ciceromayk/idbcolab-referencia/main/LOGO%20IDBCOLAB.png",
         use_container_width=True
@@ -182,7 +181,6 @@ def main():
         st.session_state.gerar_grafico = True
 
     color_sequence = color_palettes[st.session_state.selected_palette]
-    
     gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
 
     st.title("IDBCOLAB - COMITÊ DE PRODUTO")
