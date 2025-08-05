@@ -57,7 +57,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Adicionando marcos verticais
+    # Adicionando marcos verticais com anotações na base e texto vertical
     inicio_projeto = data_lancamento
     fig.add_shape(
         type="line", x0=inicio_projeto, x1=inicio_projeto,
@@ -65,10 +65,13 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         line=dict(color="green", width=2, dash="dot"),
     )
     fig.add_annotation(
-        x=inicio_projeto, y=len(df)/2, 
+        x=inicio_projeto, y=0,
+        xref="x", yref="paper",
         text="INÍCIO DO PROJETO",
-        showarrow=True, arrowhead=2, ax=-20, ay=0,
-        font=dict(color="green", size=12)
+        showarrow=True, arrowhead=2, ax=0, ay=40,
+        font=dict(color="green", size=12),
+        textangle=90,
+        xanchor="center", yanchor="bottom"
     )
 
     hoje = datetime.date.today()
@@ -78,10 +81,13 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         line=dict(color="red", width=2, dash="dot"),
     )
     fig.add_annotation(
-        x=hoje, y=len(df)/2, 
+        x=hoje, y=0,
+        xref="x", yref="paper",
         text="HOJE",
-        showarrow=True, arrowhead=2, ax=-20, ay=0,
-        font=dict(color="red", size=12)
+        showarrow=True, arrowhead=2, ax=0, ay=40,
+        font=dict(color="red", size=12),
+        textangle=90,
+        xanchor="center", yanchor="bottom"
     )
 
     lancamento = data_lancamento + datetime.timedelta(days=120)  # Lançamento em 120 dias
@@ -91,10 +97,13 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         line=dict(color="blue", width=2, dash="dot"),
     )
     fig.add_annotation(
-        x=lancamento, y=len(df)/2, 
+        x=lancamento, y=0,
+        xref="x", yref="paper",
         text="LANÇAMENTO",
-        showarrow=True, arrowhead=2, ax=-20, ay=0,
-        font=dict(color="blue", size=12)
+        showarrow=True, arrowhead=2, ax=0, ay=40,
+        font=dict(color="blue", size=12),
+        textangle=90,
+        xanchor="center", yanchor="bottom"
     )
 
     inicio_obras = data_lancamento + datetime.timedelta(days=120)
@@ -104,10 +113,13 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         line=dict(color="purple", width=2, dash="dot"),
     )
     fig.add_annotation(
-        x=inicio_obras, y=len(df)/2, 
+        x=inicio_obras, y=0,
+        xref="x", yref="paper",
         text="INÍCIO DE OBRAS",
-        showarrow=True, arrowhead=2, ax=-20, ay=0,
-        font=dict(color="purple", size=12)
+        showarrow=True, arrowhead=2, ax=0, ay=40,
+        font=dict(color="purple", size=12),
+        textangle=90,
+        xanchor="center", yanchor="bottom"
     )
 
     fig.update_yaxes(title_text=None, autorange="reversed")
