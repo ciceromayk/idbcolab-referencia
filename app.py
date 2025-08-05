@@ -57,7 +57,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Adiciona marcos verticais
+    # Adicionando marcos verticais
     inicio_projeto = data_lancamento
     fig.add_shape(
         type="line", x0=inicio_projeto, x1=inicio_projeto,
@@ -95,6 +95,19 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         text="LANÇAMENTO",
         showarrow=True, arrowhead=2, ax=-20, ay=0,
         font=dict(color="blue", size=12)
+    )
+
+    inicio_obras = data_lancamento + datetime.timedelta(days=120)
+    fig.add_shape(
+        type="line", x0=inicio_obras, x1=inicio_obras,
+        y0=0, y1=1, xref="x", yref="paper",
+        line=dict(color="purple", width=2, dash="dot"),
+    )
+    fig.add_annotation(
+        x=inicio_obras, y=len(df)/2, 
+        text="INÍCIO DE OBRAS",
+        showarrow=True, arrowhead=2, ax=-20, ay=0,
+        font=dict(color="purple", size=12)
     )
 
     fig.update_yaxes(title_text=None, autorange="reversed")
@@ -152,7 +165,7 @@ def main():
         st.session_state.selected_palette = selected_palette
 
     color_sequence = color_palettes[st.session_state.selected_palette]
-
+    
     gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
 
     # Cabeçalho
@@ -189,7 +202,7 @@ def main():
             st.metric("**INÍCIO DE OBRAS**", inicio_obras.strftime("%d/%m/%Y"))
 
         # Botão para baixar o cronograma
-        csv_data = df.to_csv(index=False).encode('utf-8')  # Garantido para UTF-8
+        csv_data = df.to_csv(index=False).encode('utf-8-sig')  # Usando 'utf-8-sig' para garantir a codificação correta
         st.sidebar.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
 
     else:
@@ -197,4 +210,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
