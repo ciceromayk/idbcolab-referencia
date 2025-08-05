@@ -137,20 +137,17 @@ def main():
         "PRÉ-OBRA"
     ]
 
+    # Inicializa os dados adicionais no session_state, se não existirem
     if "dados_adicionais" not in st.session_state:
-        st.session_state["dados_adicionais"] = pd.DataFrame({
-            "Tarefa": tarefas_ordenadas,
-            "Responsável": ["N/A"] * len(tarefas_ordenadas),
-            "Status": ["Pendente"] * len(tarefas_ordenadas),
-            "Notas": ["" for _ in tarefas_ordenadas]
-        })
+        st.session_state["dados_adicionais"] = {tarefa: {"Responsável": "N/A", "Status": "Pendente", "Notas": ""} for tarefa in tarefas_ordenadas}
 
-    # Usando um expander para editar dados adicionais
-    with st.expander("Editar Dados Adicionais"):
-        edited_df = st.experimental_data_editor(st.session_state["dados_adicionais"], num_rows="fixed")
-        if st.button("Salvar Alterações"):
-            st.session_state["dados_adicionais"] = edited_df
-            st.success("Dados adicionais salvos")
+    # Inputs para dados adicionais por tarefa
+    st.sidebar.subheader("Dados Adicionais")
+    for tarefa in tarefas_ordenadas:
+        st.sidebar.markdown(f"**{tarefa}**")
+        st.sidebar.text_input(f"Responsável - {tarefa}", value=st.session_state["dados_adicionais"][tarefa]["Responsável"], key=f"resp_{tarefa}")
+        st.sidebar.selectbox(f"Status - {tarefa}", options=["Pendente", "Em andamento", "Concluído"], index=["Pendente", "Em andamento", "Concluído"].index(st.session_state["dados_adicionais"][tarefa]["Status"]), key=f"status_{tarefa}")
+        st.sidebar.text_area(f"Notas - {tarefa}", value=st.session_state["dados_adicionais"][tarefa]["Notas"], key=f"notas_{tarefa}")
 
     gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
 
@@ -161,15 +158,20 @@ def main():
         st.markdown(f"**Projeto:** {nome.upper()}")
 
     if gerar:
-        try:
-            additional_info_df = st.session_state["dados_adicionais"].copy()
-            additional_info_df["Tarefa"] = additional_info_df["Tarefa"].str.upper()
-            additional_info = additional_info_df.set_index("Tarefa")[["Responsável", "Status", "Notas"]].to_dict(orient="index")
+        # Salva os dados adicionais da sidebar
+        for tarefa in tarefas_ordenadas:
+            st.session_state["dados_adicionais"][tarefa] = {
+                "Responsável": st.session_state[f"resp_{tarefa}"],
+                "Status": st.session_state[f"status_{tarefa}"],
+                "Notas": st.session_state[f"notas_{tarefa}"]
+            }
 
+        try:
+            additional_info = {t: st.session_state["dados_adicionais"][t] for t in tarefas_ordenadas}
             df, day_zero = calcular_cronograma_macro(data_lanc, additional_info=additional_info)
             fig = criar_grafico_macro(df, data_lanc, color_sequence=color_sequence)
             st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
-            
+
             inicio_projeto = df["Início"].min()
             hoje = datetime.date.today()
             lancamento = data_lanc
@@ -191,7 +193,7 @@ def main():
 
             csv_data = convert_df(df)
             st.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
-            
+
         except Exception as e:
             st.error(f"❌ ERRO: {e}")
     else:
