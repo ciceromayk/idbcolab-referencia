@@ -57,12 +57,27 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Linha vertical para o início do projeto
+    # Linha para o início do projeto
     inicio_projeto = data_lancamento
     fig.add_shape(
         type="line", x0=inicio_projeto, x1=inicio_projeto,
         y0=0, y1=1, xref="x", yref="paper",
         line=dict(color="green", width=2, dash="dot"),
+    )
+
+    # Adicionando linhas para marcos importantes
+    hoje = datetime.date.today()
+    fig.add_shape(
+        type="line", x0=hoje, x1=hoje,
+        y0=0, y1=1, xref="x", yref="paper",
+        line=dict(color="red", width=2, dash="dot"),
+    )
+
+    inicio_obras = data_lancamento + datetime.timedelta(days=120)
+    fig.add_shape(
+        type="line", x0=inicio_obras, x1=inicio_obras,
+        y0=0, y1=1, xref="x", yref="paper",
+        line=dict(color="blue", width=2, dash="dot"),
     )
 
     fig.update_yaxes(title_text=None, autorange="reversed")
@@ -80,7 +95,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
                 fillcolor="lightgray", opacity=0.2,
                 line_width=0, layer="below"
             )
-
+    
     annotations = []
     for _, row in df.iterrows():
         meio = row["Início"] + (row["Término"] - row["Início"]) / 2
@@ -103,13 +118,14 @@ def main():
     nome = st.sidebar.text_input("📝 Nome do Projeto")
     data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD/MM/YYYY")
 
+    # Paletas de cores
     st.sidebar.markdown("## Opções de Personalização")
     color_palettes = {
         "Default": None,
         "Viridis": px.colors.sequential.Viridis,
         "Cividis": px.colors.sequential.Cividis,
         "Plotly": px.colors.qualitative.Plotly,
-        "Dark2": px.colors.qualitative.Dark2
+        "Dark2": px.colors.qualitative.Dark2,
     }
 
     if "selected_palette" not in st.session_state:
@@ -120,6 +136,7 @@ def main():
         st.session_state.selected_palette = selected_palette
 
     color_sequence = color_palettes[st.session_state.selected_palette]
+
     gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
 
     st.title("IDBCOLAB - COMITÊ DE PRODUTO")
@@ -129,9 +146,12 @@ def main():
         st.markdown(f"**Projeto:** {nome.upper()}")
 
     if gerar:
-        # Calcular cronograma e armazenar no session state
+        # Calcular cronograma
         df, day_zero = calcular_cronograma_macro(data_lanc)
-        st.session_state.data_frame = df  # Armazena o DataFrame no session_state
+
+        # Armazenar DataFrame
+        st.session_state.data_frame = df  
+        
         fig = criar_grafico_macro(df, data_lanc, color_sequence=color_sequence)
         st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
 
@@ -153,7 +173,8 @@ def main():
 
         # Botão para baixar o cronograma
         csv_data = df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
+        st.sidebar.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
+
     else:
         st.info("Preencha o nome e a data de lançamento, depois clique em GERAR CRONOGRAMA.")
 
