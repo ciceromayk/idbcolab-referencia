@@ -40,7 +40,6 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
     ]
 
     df = pd.DataFrame(records)
-    # Conversão importante para plotly
     df["Início"] = pd.to_datetime(df["Início"])
     df["Término"] = pd.to_datetime(df["Término"])
     df["Tarefa"] = pd.Categorical(df["Tarefa"], categories=tarefas_ordenadas, ordered=True)
@@ -49,7 +48,6 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
     return df, day_zero
 
 def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequence=None) -> px.timeline:
-    # DEFINIR TODAS AS DATAS-MARCO UMA VEZ
     hoje = datetime.date.today()
     lancamento = data_lanc
     inicio_projeto = df["Início"].min()
@@ -139,23 +137,25 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 line_width=0, layer="below"
             )
 
-    # Anotações das barras - texto adapta conforme o tamanho da barra
+    # Anotações: início à esquerda, término à direita
     annotations = []
     for _, row in df.iterrows():
         if pd.notnull(row["Início"]) and pd.notnull(row["Término"]):
-            meio = row["Início"] + (row["Término"] - row["Início"]) / 2
-            dias = (row["Término"] - row["Início"]).days
-            if dias < 30:
-                text = f"{row['Início']:%d/%m} - {row['Término']:%d/%m}"
-                fsize = 8
-            else:
-                text = f"<b>INÍCIO: {row['Início']:%d/%m/%Y}<br>TÉRMINO: {row['Término']:%d/%m/%Y}</b>"
-                fsize = 10
+            # Data de início à esquerda
             annotations.append(dict(
-                x=meio, y=row["Tarefa"], text=text,
+                x=row["Início"], y=row["Tarefa"],
+                text=f"<b>{row['Início']:%d/%m/%Y}</b>",
                 showarrow=False,
-                font=dict(color="black", size=fsize),
-                xanchor="center", yanchor="middle"
+                font=dict(color="black", size=10),
+                xanchor="left", yanchor="middle"
+            ))
+            # Data de término à direita
+            annotations.append(dict(
+                x=row["Término"], y=row["Tarefa"],
+                text=f"<b>{row['Término']:%d/%m/%Y}</b>",
+                showarrow=False,
+                font=dict(color="black", size=10),
+                xanchor="right", yanchor="middle"
             ))
     fig.update_layout(annotations=annotations, margin=dict(l=250, r=40, t=20, b=40), showlegend=False)
 
@@ -201,7 +201,6 @@ def main():
         df, day_zero = calcular_cronograma_macro(data_lanc)
         st.session_state.data_frame = df  
 
-        # SINCRONIZA TODAS AS VARIÁVEIS DE MARCOS
         hoje = datetime.date.today()
         lancamento = data_lanc
         inicio_projeto = df["Início"].min()
@@ -231,4 +230,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
