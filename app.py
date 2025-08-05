@@ -57,7 +57,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Adiciona linha do início do projeto
+    # Adiciona marcos verticais
     inicio_projeto = data_lancamento
     fig.add_shape(
         type="line", x0=inicio_projeto, x1=inicio_projeto,
@@ -71,7 +71,6 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         font=dict(color="green", size=12)
     )
 
-    # Adicionando linhas para marcos importantes
     hoje = datetime.date.today()
     fig.add_shape(
         type="line", x0=hoje, x1=hoje,
@@ -85,15 +84,15 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         font=dict(color="red", size=12)
     )
 
-    inicio_obras = data_lancamento + datetime.timedelta(days=120)
+    lancamento = data_lancamento + datetime.timedelta(days=120)  # Lançamento em 120 dias
     fig.add_shape(
-        type="line", x0=inicio_obras, x1=inicio_obras,
+        type="line", x0=lancamento, x1=lancamento,
         y0=0, y1=1, xref="x", yref="paper",
         line=dict(color="blue", width=2, dash="dot"),
     )
     fig.add_annotation(
-        x=inicio_obras, y=len(df)/2, 
-        text="INÍCIO DE OBRAS",
+        x=lancamento, y=len(df)/2, 
+        text="LANÇAMENTO",
         showarrow=True, arrowhead=2, ax=-20, ay=0,
         font=dict(color="blue", size=12)
     )
@@ -156,6 +155,7 @@ def main():
 
     gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
 
+    # Cabeçalho
     st.title("IDBCOLAB - COMITÊ DE PRODUTO")
     st.subheader("Cronograma do Projeto")
 
@@ -189,7 +189,7 @@ def main():
             st.metric("**INÍCIO DE OBRAS**", inicio_obras.strftime("%d/%m/%Y"))
 
         # Botão para baixar o cronograma
-        csv_data = df.to_csv(index=False, encoding='utf-8').encode('utf-8')
+        csv_data = df.to_csv(index=False).encode('utf-8')  # Garantido para UTF-8
         st.sidebar.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
 
     else:
@@ -197,3 +197,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
