@@ -121,15 +121,19 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         xanchor="center", yanchor="bottom"
     )
 
-    # EIXO X: meses/ano + linha de grade vertical
+    # EIXO X - formato dd-mm-YYYY e linhas de grade verticais
     fig.update_xaxes(
-        tickformat="%b/%Y",  # Ex: Jan/2025
+        tickformat="%d-%m-%Y",
         showgrid=True,
         gridcolor="lightgray",
     )
-
-    # Eixo Y: título maior
-    fig.update_yaxes(title_text=None, title_font={'size': 16})
+    # Eixo Y - linhas de grade horizontais e título maior
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor="lightgray",
+        title_text=None,
+        title_font={'size': 16}
+    )
 
     n = len(df)
     for i in range(n):
@@ -144,22 +148,24 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 line_width=0, layer="below"
             )
 
-    # Anotações: início à ESQUERDA, término à DIREITA, fora das barras, fonte 12pt
-    deslocamento = pd.Timedelta(days=3)  # desloca data pra fora da barra
+    # Anotações das datas (sempre aparecem, deslocadas pra fora, inclusive para início e término iguais)
+    deslocamento = pd.Timedelta(days=3)
     annotations = []
     for _, row in df.iterrows():
-        if pd.notnull(row["Início"]):
+        ini = row["Início"]
+        ter = row["Término"]
+        if pd.notnull(ini):
             annotations.append(dict(
-                x=row["Início"] - deslocamento, y=row["Tarefa"],
-                text=f"<b>{row['Início']:%d/%m/%Y}</b>",
+                x=ini - deslocamento, y=row["Tarefa"],
+                text=f"<b>{ini:%d-%m-%Y}</b>",
                 showarrow=False,
                 font=dict(color="black", size=12),
                 xanchor="right", yanchor="middle"
             ))
-        if pd.notnull(row["Término"]):
+        if pd.notnull(ter):
             annotations.append(dict(
-                x=row["Término"] + deslocamento, y=row["Tarefa"],
-                text=f"<b>{row['Término']:%d/%m/%Y}</b>",
+                x=ter + deslocamento, y=row["Tarefa"],
+                text=f"<b>{ter:%d-%m-%Y}</b>",
                 showarrow=False,
                 font=dict(color="black", size=12),
                 xanchor="left", yanchor="middle"
@@ -180,7 +186,7 @@ def main():
     )
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
     nome = st.sidebar.text_input("📝 Nome do Projeto")
-    data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD/MM/YYYY")
+    data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD-MM-YYYY")  # formato dd-mm-yyyy
 
     st.sidebar.markdown("## Opções de Personalização")
     color_palettes = {
