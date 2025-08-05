@@ -66,7 +66,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     )
     fig.add_annotation(
         x=inicio_projeto, y=0,
-        xref="x", yref="paper",
+        xref="x", yref="paper", yref="bottom",
         text="INÍCIO DO PROJETO",
         showarrow=True, arrowhead=2, ax=0, ay=40,
         font=dict(color="green", size=12),
@@ -82,7 +82,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     )
     fig.add_annotation(
         x=hoje, y=0,
-        xref="x", yref="paper",
+        xref="x", yref="paper", yref="bottom",
         text="HOJE",
         showarrow=True, arrowhead=2, ax=0, ay=40,
         font=dict(color="red", size=12),
@@ -98,7 +98,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     )
     fig.add_annotation(
         x=lancamento, y=0,
-        xref="x", yref="paper",
+        xref="x", yref="paper", yref="bottom",
         text="LANÇAMENTO",
         showarrow=True, arrowhead=2, ax=0, ay=40,
         font=dict(color="blue", size=12),
@@ -114,7 +114,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     )
     fig.add_annotation(
         x=inicio_obras, y=0,
-        xref="x", yref="paper",
+        xref="x", yref="paper", yref="bottom",
         text="INÍCIO DE OBRAS",
         showarrow=True, arrowhead=2, ax=0, ay=40,
         font=dict(color="purple", size=12),
@@ -173,8 +173,11 @@ def main():
         st.session_state.selected_palette = "Default"
 
     selected_palette = st.sidebar.selectbox("Selecione a paleta de cores", list(color_palettes.keys()))
+    
+    # Verifica se a paleta foi alterada
     if selected_palette != st.session_state.selected_palette:
         st.session_state.selected_palette = selected_palette
+        st.session_state.gerar_grafico = True  # Força a regeneração do gráfico
 
     color_sequence = color_palettes[st.session_state.selected_palette]
     
@@ -187,7 +190,8 @@ def main():
     if nome:
         st.markdown(f"**Projeto:** {nome.upper()}")
 
-    if gerar:
+    # Garante que o gráfico seja gerado se a paleta for alterada ou o botão gerar for clicado
+    if gerar or "gerar_grafico" in st.session_state and st.session_state.gerar_grafico:
         # Calcular cronograma
         df, day_zero = calcular_cronograma_macro(data_lanc)
 
@@ -216,6 +220,10 @@ def main():
         # Botão para baixar o cronograma
         csv_data = df.to_csv(index=False).encode('utf-8-sig')  # Usando 'utf-8-sig' para garantir a codificação correta
         st.sidebar.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
+
+        # Limpa o estado de "gerar_grafico"
+        if "gerar_grafico" in st.session_state:
+            del st.session_state.gerar_grafico
 
     else:
         st.info("Preencha o nome e a data de lançamento, depois clique em GERAR CRONOGRAMA.")
