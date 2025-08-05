@@ -1,9 +1,58 @@
+import datetime
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+
+def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: dict = None) -> tuple:
+    offsets = {
+        "CONCEPÇÃO DO PRODUTO": (0, 180),
+        "INCORPORAÇÃO": (180, 420),
+        "ANTEPROJETOS": (240, 390),
+        "PROJETOS EXECUTIVOS": (330, 660),
+        "ORÇAMENTO": (390, 690),
+        "PLANEJAMENTO": (435, 720),
+        "LANÇAMENTO": (240, 540),
+        "PRÉ-OBRA": (420, 720),
+    }
+    day_zero = data_lancamento - datetime.timedelta(days=offsets["LANÇAMENTO"][1])
+    records = []
+
+    for tarefa, (i0, i1) in offsets.items():
+        start = day_zero + datetime.timedelta(days=i0)
+        end = day_zero + datetime.timedelta(days=i1)
+        record = {"Tarefa": tarefa.upper(), "Início": start, "Término": end}
+        if additional_info and tarefa.upper() in additional_info:
+            record.update(additional_info[tarefa.upper()])
+        else:
+            record.update({"Responsável": "N/A", "Status": "Pendente", "Notas": ""})
+        records.append(record)
+
+    tarefas_ordenadas = [
+        "CONCEPÇÃO DO PRODUTO",
+        "INCORPORAÇÃO",
+        "ANTEPROJETOS",
+        "PROJETOS EXECUTIVOS",
+        "ORÇAMENTO",
+        "PLANEJAMENTO",
+        "LANÇAMENTO",
+        "PRÉ-OBRA"
+    ]
+
+    df = pd.DataFrame(records)
+    df["Início"] = pd.to_datetime(df["Início"])
+    df["Término"] = pd.to_datetime(df["Término"])
+    df["Tarefa"] = pd.Categorical(df["Tarefa"], categories=tarefas_ordenadas, ordered=True)
+    df = df.sort_values("Tarefa").reset_index(drop=True)
+
+    return df, day_zero
+
 def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequence=None) -> px.timeline:
     hoje = datetime.date.today()
     lancamento = data_lanc
     inicio_projeto = df["Início"].min()
     max_date = df["Término"].max()
 
+    # Define o fim do período ao final do último Término + um mês
     if max_date.day != 1:
         next_month = (max_date.replace(day=1) + pd.Timedelta(days=32)).replace(day=1)
     else:
@@ -34,7 +83,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Marcar início do projeto
+    # Marcos - início do projeto
     fig.add_shape(
         type="line",
         x0=inicio_projeto,
@@ -43,7 +92,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         y1=1,
         xref="x",
         yref="paper",
-        line=dict(color="green", width=2, dash="dot")
+        line=dict(color="green", width=2, dash="dot"),
     )
     fig.add_annotation(
         x=inicio_projeto,
@@ -57,7 +106,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         yanchor="bottom"
     )
 
-    # Marcar hoje
+    # Marlhar hoje
     fig.add_shape(
         type="line",
         x0=hoje,
@@ -89,7 +138,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         y1=1,
         xref="x",
         yref="paper",
-        line=dict(color="blue", width=2, dash="dot")
+        line=dict(color="blue", width=2, dash="dot"),
     )
     fig.add_annotation(
         x=lancamento,
@@ -113,7 +162,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         y1=1,
         xref="x",
         yref="paper",
-        line=dict(color="purple", width=2, dash="dot")
+        line=dict(color="purple", width=2, dash="dot"),
     )
     fig.add_annotation(
         x=inicio_obras,
@@ -130,7 +179,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
     # Configuração eixo principal
     fig.update_xaxes(
         tickvals=tickvals,
-        ticktext=ticktext_MMYY,  # usar a variável correta aqui
+        ticktext=ticktext_MMYY,
         tickformat="%m-%y",
         range=[inicio_projeto, end_period],
         showgrid=True,
@@ -138,23 +187,20 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         dtick="M1"
     )
 
-    # Configuração eixo secundário MM-YY
+    # Configuração do eixo secundário MM-YY
     fig.update_layout(
-        margin=dict(l=250, r=40, t=20, b=150),
-        # Definindo o eixo secundário, sobreposto ao principal
+        margin=dict(l=250, r=40, t=20, b=180),
         xaxis2=dict(
-            domain=[0, 1],  # ocupar toda a largura
+            domain=[0, 1],    # oeste toda a largura
             overlaying="x",
             anchor="y",
-            side='bottom',  # na parte inferior
+            position=0.02,    # próximo ao fundo
+            showticklabels=True,
             tickvals=tickvals,
             ticktext=ticktext_MMYY,
-            showticklabels=True,
             showgrid=False,
-            tickfont=dict(size=10),
-            position=0.05  # posição quase na parte de baixo
+            tickfont=dict(size=10)
         ),
-        # Anotação para label do eixo secundário
         annotations=[
             dict(
                 text="Mês (MM-YY)",
@@ -188,7 +234,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 layer="below"
             )
 
-    # Anotações externas
+    # Anotações externas às barras
     deslocamento = pd.Timedelta(days=3)
     annotations = []
     for _, row in df.iterrows():
@@ -215,7 +261,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 yanchor="middle"
             ))
 
-    # Atualizar layout
+    # Atualizando layout final
     fig.update_layout(
         annotations=annotations,
         showlegend=False,
@@ -223,3 +269,80 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
     )
 
     return fig
+
+def main():
+    st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
+    st.sidebar.image(
+        "https://raw.githubusercontent.com/ciceromayk/idbcolab-referencia/main/LOGO%20IDBCOLAB.png",
+        use_container_width=True
+    )
+    st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
+    nome = st.sidebar.text_input("📝 Nome do Projeto")
+    data_lanc = st.sidebar.date_input(
+        "📅 LANÇAMENTO:", value=datetime.date.today(), format="DD-MM-YYYY"
+    )
+
+    st.sidebar.markdown("## Opções de Personalização")
+    color_palettes = {
+        "Default": None,
+        "Viridis": px.colors.sequential.Viridis,
+        "Cividis": px.colors.sequential.Cividis,
+        "Plotly": px.colors.qualitative.Plotly,
+        "Dark2": px.colors.qualitative.Dark2
+    }
+
+    if "selected_palette" not in st.session_state:
+        st.session_state.selected_palette = "Default"
+
+    selected_palette = st.sidebar.selectbox(
+        "Selecione a paleta de cores", list(color_palettes.keys())
+    )
+
+    if selected_palette != st.session_state.selected_palette:
+        st.session_state.selected_palette = selected_palette
+        st.session_state.gerar_grafico = True
+
+    color_sequence = color_palettes[st.session_state.selected_palette]
+    gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
+
+    st.title("IDBCOLAB - COMITÊ DE PRODUTO")
+    st.subheader("Cronograma do Projeto")
+
+    if nome:
+        st.markdown(f"**Projeto:** {nome.upper()}")
+
+    if gerar or ("gerar_grafico" in st.session_state and st.session_state.gerar_grafico):
+        df, _ = calcular_cronograma_macro(data_lanc)
+        st.session_state.data_frame = df
+
+        hoje = datetime.date.today()
+        lancamento = data_lanc
+        inicio_projeto = df["Início"].min()
+        inicio_obras = lancamento + datetime.timedelta(days=120)
+
+        fig = criar_grafico_macro(df, data_lanc, color_sequence=color_sequence)
+        st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("**INÍCIO DO PROJETO**", inicio_projeto.strftime("%d/%m/%Y"))
+        with col2:
+            st.metric("**HOJE**", hoje.strftime("%d/%m/%Y"))
+        with col3:
+            st.metric("**LANÇAMENTO**", lancamento.strftime("%d/%m/%Y"))
+        with col4:
+            st.metric("**INÍCIO DE OBRAS**", inicio_obras.strftime("%d/%m/%Y"))
+
+        csv_data = df.to_csv(index=False).encode("utf-8-sig")
+        st.sidebar.download_button(
+            "📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv"
+        )
+
+        if "gerar_grafico" in st.session_state:
+            del st.session_state.gerar_grafico
+
+    else:
+        st.info("Preencha o nome e a data de lançamento, depois clique em GERAR CRONOGRAMA.")
+
+if __name__ == "__main__":
+    main()
