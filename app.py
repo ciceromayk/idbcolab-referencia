@@ -57,12 +57,18 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Linha para o início do projeto
+    # Adiciona linha do início do projeto
     inicio_projeto = data_lancamento
     fig.add_shape(
         type="line", x0=inicio_projeto, x1=inicio_projeto,
         y0=0, y1=1, xref="x", yref="paper",
         line=dict(color="green", width=2, dash="dot"),
+    )
+    fig.add_annotation(
+        x=inicio_projeto, y=len(df)/2, 
+        text="INÍCIO DO PROJETO",
+        showarrow=True, arrowhead=2, ax=-20, ay=0,
+        font=dict(color="green", size=12)
     )
 
     # Adicionando linhas para marcos importantes
@@ -72,12 +78,24 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         y0=0, y1=1, xref="x", yref="paper",
         line=dict(color="red", width=2, dash="dot"),
     )
+    fig.add_annotation(
+        x=hoje, y=len(df)/2, 
+        text="HOJE",
+        showarrow=True, arrowhead=2, ax=-20, ay=0,
+        font=dict(color="red", size=12)
+    )
 
     inicio_obras = data_lancamento + datetime.timedelta(days=120)
     fig.add_shape(
         type="line", x0=inicio_obras, x1=inicio_obras,
         y0=0, y1=1, xref="x", yref="paper",
         line=dict(color="blue", width=2, dash="dot"),
+    )
+    fig.add_annotation(
+        x=inicio_obras, y=len(df)/2, 
+        text="INÍCIO DE OBRAS",
+        showarrow=True, arrowhead=2, ax=-20, ay=0,
+        font=dict(color="blue", size=12)
     )
 
     fig.update_yaxes(title_text=None, autorange="reversed")
@@ -107,7 +125,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
             xanchor="center", yanchor="middle"
         ))
 
-    fig.update_layout(annotations=annotations, margin=dict(l=250, r=40, t=40, b=40), showlegend=False)
+    fig.update_layout(annotations=annotations, margin=dict(l=250, r=40, t=20, b=40), showlegend=False)
 
     return fig
 
@@ -118,14 +136,13 @@ def main():
     nome = st.sidebar.text_input("📝 Nome do Projeto")
     data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD/MM/YYYY")
 
-    # Paletas de cores
     st.sidebar.markdown("## Opções de Personalização")
     color_palettes = {
         "Default": None,
         "Viridis": px.colors.sequential.Viridis,
         "Cividis": px.colors.sequential.Cividis,
         "Plotly": px.colors.qualitative.Plotly,
-        "Dark2": px.colors.qualitative.Dark2,
+        "Dark2": px.colors.qualitative.Dark2
     }
 
     if "selected_palette" not in st.session_state:
@@ -172,7 +189,7 @@ def main():
             st.metric("**INÍCIO DE OBRAS**", inicio_obras.strftime("%d/%m/%Y"))
 
         # Botão para baixar o cronograma
-        csv_data = df.to_csv(index=False).encode('utf-8')
+        csv_data = df.to_csv(index=False, encoding='utf-8').encode('utf-8')
         st.sidebar.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
 
     else:
