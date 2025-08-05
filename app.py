@@ -28,13 +28,13 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
         records.append(record)
 
     tarefas_ordenadas = [
-        "CONCEPÇÃO DO PRODUTO", 
-        "INCORPORAÇÃO", 
-        "ANTEPROJETOS", 
-        "PROJETOS EXECUTIVOS", 
-        "ORÇAMENTO", 
-        "PLANEJAMENTO", 
-        "LANÇAMENTO", 
+        "CONCEPÇÃO DO PRODUTO",
+        "INCORPORAÇÃO",
+        "ANTEPROJETOS",
+        "PROJETOS EXECUTIVOS",
+        "ORÇAMENTO",
+        "PLANEJAMENTO",
+        "LANÇAMENTO",
         "PRÉ-OBRA"
     ]
 
@@ -60,17 +60,20 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
     total_months = (next_month.year - inicio_projeto.year) * 12 + (next_month.month - inicio_projeto.month) + 1
     end_period = (inicio_projeto + pd.DateOffset(months=total_months))
 
-    # Montar lista de ticks para cada mês
+    # Montar lista de ticks para cada mês MM-YY
     tickvals = []
-    ticktext = []
+    ticktext_MMYY = []
+    ticktext_Menum = []
     current_month = inicio_projeto.replace(day=1)
     for i in range(total_months):
         tickvals.append(current_month)
-        ticktext.append(f"MÊS {i+1:02d}")
+        ticktext_MMYY.append(f"{current_month.month:02d}-{str(current_month.year)[-2:]}")
+        ticktext_Menum.append(f"MÊS {i+1:02d}")
         year = current_month.year + (current_month.month // 12)
         month = (current_month.month % 12) + 1
         current_month = current_month.replace(year=year, month=month)
 
+    # Criar gráfico
     fig = px.timeline(
         df,
         x_start="Início",
@@ -174,10 +177,10 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         yanchor="bottom"
     )
 
-    # Configuração eixo X
+    # Configuração eixo eixo x principal
     fig.update_xaxes(
         tickvals=tickvals,
-        ticktext=ticktext,
+        ticktext=ticktext_Menum,
         tickformat="%m-%y",
         range=[inicio_projeto, end_period],
         showgrid=True,
@@ -185,12 +188,30 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         dtick="M1"  # marca de 1 mês
     )
 
-    # Grade horizontal para cada tarefa
-    fig.update_yaxes(
-        showgrid=True,
-        gridcolor="lightgray",
-        title_text=None,
-        title_font={'size': 16}
+    # Configuração eixo x secundário
+    fig.update_layout(
+        xaxis2=dict(
+            domain=[0, 0.8],
+            anchor="y",
+            position=0.15,
+            tickvals=tickvals,
+            ticktext=ticktext_MMYY,
+            showticklabels=True,
+            showgrid=False,
+            tickfont=dict(size=10)
+        ),
+        margin=dict(l=250, r=40, t=20, b=100),  # ajuste do espaçamento para o eixo secundário
+        annotations=[
+            dict(
+                text="Mês (MM-YY)",
+                xref="x2",
+                yref="paper",
+                x=0.5,
+                y=0.05,
+                showarrow=False,
+                font=dict(size=12)
+            )
+        ]
     )
 
     # Linhas de fundo alternadas
@@ -240,11 +261,10 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 yanchor="middle"
             ))
 
-    # Garantir que as anotações das tarefas com datas próximas apareçam
-    # já estão ajustadas pelo deslocamento de 3 dias
+    # Atualizar layout com as anotações e margens
     fig.update_layout(
         annotations=annotations,
-        margin=dict(l=250, r=40, t=20, b=40),
+        margin=dict(l=250, r=40, t=20, b=100),
         showlegend=False
     )
 
