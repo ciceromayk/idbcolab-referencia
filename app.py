@@ -57,7 +57,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Adicionando marcos verticais com anotações na base e texto vertical
+    # Adicionando marcos verticais com anotações na base e texto vertical modificado para -90
     inicio_projeto = data_lancamento
     fig.add_shape(
         type="line", x0=inicio_projeto, x1=inicio_projeto,
@@ -66,7 +66,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     )
     fig.add_annotation(
         x=inicio_projeto, y=0,
-        xref="x", yref="bottom",
+        xref="x", yref="paper",
         text="INÍCIO DO PROJETO",
         showarrow=True, arrowhead=2, ax=0, ay=40,
         font=dict(color="green", size=12),
@@ -82,7 +82,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     )
     fig.add_annotation(
         x=hoje, y=0,
-        xref="x", yref="bottom",
+        xref="x", yref="paper",
         text="HOJE",
         showarrow=True, arrowhead=2, ax=0, ay=40,
         font=dict(color="red", size=12),
@@ -98,7 +98,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     )
     fig.add_annotation(
         x=lancamento, y=0,
-        xref="x", yref="bottom",
+        xref="x", yref="paper",
         text="LANÇAMENTO",
         showarrow=True, arrowhead=2, ax=0, ay=40,
         font=dict(color="blue", size=12),
@@ -114,7 +114,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     )
     fig.add_annotation(
         x=inicio_obras, y=0,
-        xref="x", yref="bottom",
+        xref="x", yref="paper",
         text="INÍCIO DE OBRAS",
         showarrow=True, arrowhead=2, ax=0, ay=40,
         font=dict(color="purple", size=12),
