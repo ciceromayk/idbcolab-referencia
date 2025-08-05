@@ -60,10 +60,11 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     fig.update_yaxes(title_text=None, autorange="reversed")
     fig.update_xaxes(tickformat="%d/%m/%Y")
 
-    for i in range(len(df)):
+    n = len(df)
+    for i in range(n):
         if i % 2 == 0:
-            y0 = 1 - (i + 1) / len(df)
-            y1 = 1 - i / len(df)
+            y0 = 1 - (i + 1) / n
+            y1 = 1 - i / n
             fig.add_shape(
                 type="rect",
                 xref="paper", yref="paper",
@@ -110,22 +111,12 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
 def main():
     st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
 
+    # Configuração do menu lateral
     st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
     nome = st.sidebar.text_input("📝 Nome do Projeto")
     data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD/MM/YYYY")
 
-    st.sidebar.markdown("## Opções de Personalização")
-    color_palettes = {
-        "Default": None,
-        "Viridis": px.colors.sequential.Viridis,
-        "Cividis": px.colors.sequential.Cividis,
-        "Plotly": px.colors.qualitative.Plotly,
-        "Dark2": px.colors.qualitative.Dark2
-    }
-    selected_palette = st.sidebar.selectbox("Selecione a paleta de cores", list(color_palettes.keys()))
-    color_sequence = color_palettes[selected_palette]
-
-    tarefas_ordenadas = [
+    tasks = [
         "CONCEPÇÃO DO PRODUTO", 
         "INCORPORAÇÃO", 
         "ANTEPROJETOS", 
@@ -136,45 +127,52 @@ def main():
         "PRÉ-OBRA"
     ]
 
-    # Inicializa dados adicionais
     if "dados_adicionais" not in st.session_state:
         st.session_state["dados_adicionais"] = {
-            tarefa: {"Responsável": "N/A", "Status": "Pendente", "Notas": ""}
-            for tarefa in tarefas_ordenadas
+            task: {"Responsável": "N/A", "Status": "Pendente", "Notas": ""}
+            for task in tasks
         }
 
-    # Seleção de tarefa
-    selected_task = st.selectbox("Selecionar Tarefa", tarefas_ordenadas)
+    # Escolha da tarefa
+    selected_task = st.sidebar.selectbox("Selecionar Tarefa para Editar", tasks)
 
-    # Formulário para inserção de dados adicionais
-    with st.form(key='additional_info_form'):
-        responsavel = st.text_input("Responsável", value=st.session_state["dados_adicionais"][selected_task]["Responsável"])
-        status = st.selectbox("Status", options=["Pendente", "Em andamento", "Concluído"], index=["Pendente", "Em andamento", "Concluído"].index(st.session_state["dados_adicionais"][selected_task]["Status"]))
-        notas = st.text_area("Notas", value=st.session_state["dados_adicionais"][selected_task]["Notas"])
-        submit_button = st.form_submit_button("Salvar Dados")
+    # Formulário para edição das informações da tarefa
+    responsavel = st.sidebar.text_input("Responsável", value=st.session_state["dados_adicionais"][selected_task]["Responsável"])
+    status = st.sidebar.selectbox("Status", options=["Pendente", "Em andamento", "Concluído"],
+        index=["Pendente", "Em andamento", "Concluído"].index(st.session_state["dados_adicionais"][selected_task]["Status"]))
+    notas = st.sidebar.text_area("Notas", value=st.session_state["dados_adicionais"][selected_task]["Notas"])
 
-        if submit_button:
-            # Atualiza os dados no session_state
-            st.session_state["dados_adicionais"][selected_task] = {
-                "Responsável": responsavel,
-                "Status": status,
-                "Notas": notas
-            }
-            st.success(f"Dados da tarefa '{selected_task}' atualizados com sucesso!")
+    # Botão para salvar dados
+    if st.sidebar.button("Salvar Dados"):
+        st.session_state["dados_adicionais"][selected_task] = {
+            "Responsável": responsavel,
+            "Status": status,
+            "Notas": notas
+        }
+        st.success(f"Dados da tarefa '{selected_task}' atualizados com sucesso!")
 
-    gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
-
-    st.title("IDBCOLAB - COMITÊ DE PRODUTO")
+    # Menu superior
+    st.header("IDBCOLAB - COMITÊ DE PRODUTO")
     st.subheader("Cronograma do Projeto")
 
+    # Botões superiores
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("📥 Exportar Cronograma"):
+            # Lógica de exportação (opcional)
+            st.info("Exportação em breve!")
+    with col2:
+        if st.button("⚙️ Configurações"):
+            st.info("Configurações em breve!")
+    
     if nome:
         st.markdown(f"**Projeto:** {nome.upper()}")
 
-    if gerar:
+    if st.sidebar.button("🚀 GERAR CRONOGRAMA"):
         try:
-            additional_info = {t: st.session_state["dados_adicionais"][t] for t in tarefas_ordenadas}
+            additional_info = {t: st.session_state["dados_adicionais"][t] for t in tasks}
             df, day_zero = calcular_cronograma_macro(data_lanc, additional_info=additional_info)
-            fig = criar_grafico_macro(df, data_lanc, color_sequence=color_sequence)
+            fig = criar_grafico_macro(df, data_lanc, color_sequence=px.colors.sequential.Viridis)
             st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
 
             inicio_projeto = df["Início"].min()
@@ -194,7 +192,7 @@ def main():
 
             @st.cache_data
             def convert_df(df):
-                return df.to_csv(index=False).encode("utf-8")
+                return df.to_csv(index=False).encode('utf-8')
 
             csv_data = convert_df(df)
             st.download_button("📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv")
