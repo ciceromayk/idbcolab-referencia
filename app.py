@@ -49,6 +49,12 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
     return df, day_zero
 
 def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequence=None) -> px.timeline:
+    # DEFINIR TODAS AS DATAS-MARCO UMA VEZ
+    hoje = datetime.date.today()
+    lancamento = data_lanc
+    inicio_projeto = df["Início"].min()
+    inicio_obras = lancamento + datetime.timedelta(days=120)
+
     fig = px.timeline(
         df,
         x_start="Início",
@@ -60,14 +66,14 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Marco: INÍCIO DO PROJETO
+    # ---- MARCOS ----
     fig.add_shape(
-        type="line", x0=data_lanc, x1=data_lanc,
+        type="line", x0=inicio_projeto, x1=inicio_projeto,
         y0=0, y1=1, xref="x", yref="paper",
         line=dict(color="green", width=2, dash="dot"),
     )
     fig.add_annotation(
-        x=data_lanc, y=1,
+        x=inicio_projeto, y=1,
         xref="x", yref="paper",
         text="INÍCIO DO PROJETO",
         font=dict(color="green", size=12),
@@ -75,8 +81,6 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         xanchor="center", yanchor="bottom"
     )
 
-    # Marco: HOJE
-    hoje = datetime.date.today()
     fig.add_shape(
         type="line", x0=hoje, x1=hoje,
         y0=0, y1=1, xref="x", yref="paper",
@@ -91,8 +95,6 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         xanchor="center", yanchor="bottom"
     )
 
-    # Marco: LANÇAMENTO
-    lancamento = data_lanc
     fig.add_shape(
         type="line", x0=lancamento, x1=lancamento,
         y0=0, y1=1, xref="x", yref="paper",
@@ -107,8 +109,6 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         xanchor="center", yanchor="bottom"
     )
 
-    # Marco: INÍCIO DE OBRAS (AGORA CORRETO: 120 DIAS APÓS O LANÇAMENTO)
-    inicio_obras = data_lanc + datetime.timedelta(days=120)
     fig.add_shape(
         type="line", x0=inicio_obras, x1=inicio_obras,
         y0=0, y1=1, xref="x", yref="paper",
@@ -139,16 +139,22 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 line_width=0, layer="below"
             )
 
-    # Anotações das barras
+    # Anotações das barras - texto adapta conforme o tamanho da barra
     annotations = []
     for _, row in df.iterrows():
         if pd.notnull(row["Início"]) and pd.notnull(row["Término"]):
             meio = row["Início"] + (row["Término"] - row["Início"]) / 2
-            text = f"<b>INÍCIO: {row['Início']:%d/%m/%Y}<br>TÉRMINO: {row['Término']:%d/%m/%Y}</b>"
+            dias = (row["Término"] - row["Início"]).days
+            if dias < 30:
+                text = f"{row['Início']:%d/%m} - {row['Término']:%d/%m}"
+                fsize = 8
+            else:
+                text = f"<b>INÍCIO: {row['Início']:%d/%m/%Y}<br>TÉRMINO: {row['Término']:%d/%m/%Y}</b>"
+                fsize = 10
             annotations.append(dict(
                 x=meio, y=row["Tarefa"], text=text,
                 showarrow=False,
-                font=dict(color="black", size=10),
+                font=dict(color="black", size=fsize),
                 xanchor="center", yanchor="middle"
             ))
     fig.update_layout(annotations=annotations, margin=dict(l=250, r=40, t=20, b=40), showlegend=False)
@@ -194,14 +200,15 @@ def main():
     if gerar or ("gerar_grafico" in st.session_state and st.session_state.gerar_grafico):
         df, day_zero = calcular_cronograma_macro(data_lanc)
         st.session_state.data_frame = df  
+
+        # SINCRONIZA TODAS AS VARIÁVEIS DE MARCOS
+        hoje = datetime.date.today()
+        lancamento = data_lanc
+        inicio_projeto = df["Início"].min()
+        inicio_obras = lancamento + datetime.timedelta(days=120)
         
         fig = criar_grafico_macro(df, data_lanc, color_sequence=color_sequence)
         st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
-
-        inicio_projeto = df["Início"].min()
-        hoje = datetime.date.today()
-        lancamento = data_lanc
-        inicio_obras = data_lanc + datetime.timedelta(days=120)  # <- Usando data_lanc sempre
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -224,3 +231,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
