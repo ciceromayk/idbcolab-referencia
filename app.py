@@ -14,7 +14,7 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
         "LANÇAMENTO": (240, 540),
         "PRÉ-OBRA": (420, 720),
     }
-
+    
     day_zero = data_lancamento - datetime.timedelta(days=offsets["LANÇAMENTO"][1])
     records = []
 
@@ -60,11 +60,10 @@ def criar_grafico_macro(df: pd.DataFrame, data_lancamento: datetime.date, color_
     fig.update_yaxes(title_text=None, autorange="reversed")
     fig.update_xaxes(tickformat="%d/%m/%Y")
 
-    n = len(df)
-    for i in range(n):
+    for i in range(len(df)):
         if i % 2 == 0:
-            y0 = 1 - (i + 1) / n
-            y1 = 1 - i / n
+            y0 = 1 - (i + 1) / len(df)
+            y1 = 1 - i / len(df)
             fig.add_shape(
                 type="rect",
                 xref="paper", yref="paper",
@@ -137,17 +136,31 @@ def main():
         "PRÉ-OBRA"
     ]
 
-    # Inicializa os dados adicionais no session_state, se não existirem
+    # Inicializa dados adicionais
     if "dados_adicionais" not in st.session_state:
-        st.session_state["dados_adicionais"] = {tarefa: {"Responsável": "N/A", "Status": "Pendente", "Notas": ""} for tarefa in tarefas_ordenadas}
+        st.session_state["dados_adicionais"] = {
+            tarefa: {"Responsável": "N/A", "Status": "Pendente", "Notas": ""}
+            for tarefa in tarefas_ordenadas
+        }
 
-    # Inputs para dados adicionais por tarefa
-    st.sidebar.subheader("Dados Adicionais")
-    for tarefa in tarefas_ordenadas:
-        st.sidebar.markdown(f"**{tarefa}**")
-        st.sidebar.text_input(f"Responsável - {tarefa}", value=st.session_state["dados_adicionais"][tarefa]["Responsável"], key=f"resp_{tarefa}")
-        st.sidebar.selectbox(f"Status - {tarefa}", options=["Pendente", "Em andamento", "Concluído"], index=["Pendente", "Em andamento", "Concluído"].index(st.session_state["dados_adicionais"][tarefa]["Status"]), key=f"status_{tarefa}")
-        st.sidebar.text_area(f"Notas - {tarefa}", value=st.session_state["dados_adicionais"][tarefa]["Notas"], key=f"notas_{tarefa}")
+    # Seleção de tarefa
+    selected_task = st.selectbox("Selecionar Tarefa", tarefas_ordenadas)
+
+    # Formulário para inserção de dados adicionais
+    with st.form(key='additional_info_form'):
+        responsavel = st.text_input("Responsável", value=st.session_state["dados_adicionais"][selected_task]["Responsável"])
+        status = st.selectbox("Status", options=["Pendente", "Em andamento", "Concluído"], index=["Pendente", "Em andamento", "Concluído"].index(st.session_state["dados_adicionais"][selected_task]["Status"]))
+        notas = st.text_area("Notas", value=st.session_state["dados_adicionais"][selected_task]["Notas"])
+        submit_button = st.form_submit_button("Salvar Dados")
+
+        if submit_button:
+            # Atualiza os dados no session_state
+            st.session_state["dados_adicionais"][selected_task] = {
+                "Responsável": responsavel,
+                "Status": status,
+                "Notas": notas
+            }
+            st.success(f"Dados da tarefa '{selected_task}' atualizados com sucesso!")
 
     gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
 
@@ -158,14 +171,6 @@ def main():
         st.markdown(f"**Projeto:** {nome.upper()}")
 
     if gerar:
-        # Salva os dados adicionais da sidebar
-        for tarefa in tarefas_ordenadas:
-            st.session_state["dados_adicionais"][tarefa] = {
-                "Responsável": st.session_state[f"resp_{tarefa}"],
-                "Status": st.session_state[f"status_{tarefa}"],
-                "Notas": st.session_state[f"notas_{tarefa}"]
-            }
-
         try:
             additional_info = {t: st.session_state["dados_adicionais"][t] for t in tarefas_ordenadas}
             df, day_zero = calcular_cronograma_macro(data_lanc, additional_info=additional_info)
