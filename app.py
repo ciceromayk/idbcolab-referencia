@@ -28,13 +28,13 @@ def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: d
         records.append(record)
 
     tarefas_ordenadas = [
-        "CONCEPÇÃO DO PRODUTO",
-        "INCORPORAÇÃO",
-        "ANTEPROJETOS",
-        "PROJETOS EXECUTIVOS",
-        "ORÇAMENTO",
-        "PLANEJAMENTO",
-        "LANÇAMENTO",
+        "CONCEPÇÃO DO PRODUTO", 
+        "INCORPORAÇÃO", 
+        "ANTEPROJETOS", 
+        "PROJETOS EXECUTIVOS", 
+        "ORÇAMENTO", 
+        "PLANEJAMENTO", 
+        "LANÇAMENTO", 
         "PRÉ-OBRA"
     ]
 
@@ -60,20 +60,18 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
     total_months = (next_month.year - inicio_projeto.year) * 12 + (next_month.month - inicio_projeto.month) + 1
     end_period = (inicio_projeto + pd.DateOffset(months=total_months))
 
-    # Montar lista de ticks para cada mês MM-YY
+    # Lista de ticks no formato MM-YY
     tickvals = []
     ticktext_MMYY = []
-    ticktext_Menum = []
     current_month = inicio_projeto.replace(day=1)
-    for i in range(total_months):
+    for _ in range(total_months):
         tickvals.append(current_month)
         ticktext_MMYY.append(f"{current_month.month:02d}-{str(current_month.year)[-2:]}")
-        ticktext_Menum.append(f"MÊS {i+1:02d}")
         year = current_month.year + (current_month.month // 12)
         month = (current_month.month % 12) + 1
         current_month = current_month.replace(year=year, month=month)
 
-    # Criar gráfico
+    # Criar o gráfico de timeline
     fig = px.timeline(
         df,
         x_start="Início",
@@ -177,7 +175,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         yanchor="bottom"
     )
 
-    # Configuração eixo eixo x principal
+    # Configura o eixo x padrão (para barra de tarefas)
     fig.update_xaxes(
         tickvals=tickvals,
         ticktext=ticktext_Menum,
@@ -185,33 +183,48 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         range=[inicio_projeto, end_period],
         showgrid=True,
         gridcolor="lightgray",
-        dtick="M1"  # marca de 1 mês
+        dtick="M1",
+        domain=[0, 0.95]  # até próximo do final
     )
 
-    # Configuração eixo x secundário
+    # Adiciona o eixo x secundário no posicionamento inferior
     fig.update_layout(
+        margin=dict(l=250, r=40, t=20, b=150),  # maior margem inferior
+        # Definição do eixo secundário
         xaxis2=dict(
-            domain=[0, 0.8],
+            domain=[0, 0.95],
             anchor="y",
-            position=0.15,
+            position=0.05,
             tickvals=tickvals,
             ticktext=ticktext_MMYY,
             showticklabels=True,
             showgrid=False,
-            tickfont=dict(size=10)
+            tickfont=dict(size=10),
+            matches=None
         ),
-        margin=dict(l=250, r=40, t=20, b=100),  # ajuste do espaçamento para o eixo secundário
         annotations=[
             dict(
                 text="Mês (MM-YY)",
                 xref="x2",
                 yref="paper",
                 x=0.5,
-                y=0.05,
+                y=0.01,
                 showarrow=False,
                 font=dict(size=12)
             )
         ]
+    )
+
+    # Adiciona o eixo x secundário como eixo separado com id 'x2'
+    fig.layout['xaxis2'] = dict(
+        domain=[0, 0.95],
+        anchor="y",
+        tickvals=tickvals,
+        ticktext=ticktext_MMYY,
+        showticklabels=True,
+        showgrid=False,
+        position=0.05,
+        tickfont=dict(size=10)
     )
 
     # Linhas de fundo alternadas
@@ -234,7 +247,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 layer="below"
             )
 
-    # Datas visíveis, deslocadas para fora
+    # Ajusta as posições e mantém as anotações de datas externas às barras
     deslocamento = pd.Timedelta(days=3)
     annotations = []
     for _, row in df.iterrows():
@@ -261,11 +274,11 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 yanchor="middle"
             ))
 
-    # Atualizar layout com as anotações e margens
+    # Atualizar o layout
     fig.update_layout(
         annotations=annotations,
-        margin=dict(l=250, r=40, t=20, b=100),
-        showlegend=False
+        showlegend=False,
+        margin=dict(l=250, r=40, t=20, b=150),
     )
 
     return fig
@@ -280,7 +293,7 @@ def main():
     nome = st.sidebar.text_input("📝 Nome do Projeto")
     data_lanc = st.sidebar.date_input(
         "📅 LANÇAMENTO:", value=datetime.date.today(), format="DD-MM-YYYY"
-    )  # formato dd-mm-yyyy
+    )
 
     st.sidebar.markdown("## Opções de Personalização")
     color_palettes = {
