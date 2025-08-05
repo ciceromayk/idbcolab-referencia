@@ -52,7 +52,6 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
     inicio_projeto = df["Início"].min()
     max_date = df["Término"].max()
 
-    # Define o fim do período ao final do último Término + um mês
     if max_date.day != 1:
         next_month = (max_date.replace(day=1) + pd.Timedelta(days=32)).replace(day=1)
     else:
@@ -175,32 +174,31 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         yanchor="bottom"
     )
 
-    # Configura o eixo x padrão (para barra de tarefas)
+    # Configura o eixo x principal
     fig.update_xaxes(
         tickvals=tickvals,
-        ticktext=ticktext_Menum,
+        ticktext=ticktext_Menum,  # Usar apenas o array do mês
         tickformat="%m-%y",
         range=[inicio_projeto, end_period],
         showgrid=True,
         gridcolor="lightgray",
-        dtick="M1",
-        domain=[0, 0.95]  # até próximo do final
+        dtick="M1"
     )
 
-    # Adiciona o eixo x secundário no posicionamento inferior
+    # Adiciona o eixo x secundário
     fig.update_layout(
-        margin=dict(l=250, r=40, t=20, b=150),  # maior margem inferior
-        # Definição do eixo secundário
+        margin=dict(l=250, r=40, t=20, b=150),
+        # Define o eixo secundário do tipo 'xaxis2'
         xaxis2=dict(
-            domain=[0, 0.95],
+            domain=[0, 1],
+            overlaying="x",
             anchor="y",
-            position=0.05,
+            side='bottom',  # desejável colocar no fundo
             tickvals=tickvals,
             ticktext=ticktext_MMYY,
             showticklabels=True,
             showgrid=False,
-            tickfont=dict(size=10),
-            matches=None
+            tickfont=dict(size=10)
         ),
         annotations=[
             dict(
@@ -213,18 +211,6 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 font=dict(size=12)
             )
         ]
-    )
-
-    # Adiciona o eixo x secundário como eixo separado com id 'x2'
-    fig.layout['xaxis2'] = dict(
-        domain=[0, 0.95],
-        anchor="y",
-        tickvals=tickvals,
-        ticktext=ticktext_MMYY,
-        showticklabels=True,
-        showgrid=False,
-        position=0.05,
-        tickfont=dict(size=10)
     )
 
     # Linhas de fundo alternadas
@@ -247,7 +233,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 layer="below"
             )
 
-    # Ajusta as posições e mantém as anotações de datas externas às barras
+    # Adiciona as datas externas às barras
     deslocamento = pd.Timedelta(days=3)
     annotations = []
     for _, row in df.iterrows():
@@ -274,7 +260,7 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
                 yanchor="middle"
             ))
 
-    # Atualizar o layout
+    # Atualizar layout
     fig.update_layout(
         annotations=annotations,
         showlegend=False,
