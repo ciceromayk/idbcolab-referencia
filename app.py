@@ -77,41 +77,48 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Marcos verticais
-    for data, cor, texto in [
-        (inicio_projeto, "green", "INÍCIO DO PROJETO"),
-        (hoje, "red", "HOJE"),
-        (lancamento, "blue", "LANÇAMENTO"),
-        (lancamento + datetime.timedelta(days=120), "purple", "INÍCIO DE OBRAS")
+    # Cores para os cards
+    card_colors = {
+        "INÍCIO DO PROJETO": "lightgreen",
+        "HOJE": "lightcoral",
+        "LANÇAMENTO": "lightblue",
+        "INÍCIO DE OBRAS": "plum"
+    }
+
+    # Marcos verticais estilizados
+    for data, texto in [
+        (inicio_projeto, "INÍCIO DO PROJETO"),
+        (hoje, "HOJE"),
+        (lancamento, "LANÇAMENTO"),
+        (lancamento + datetime.timedelta(days=120), "INÍCIO DE OBRAS")
     ]:
+        cor = card_colors[texto]
+        # Linha vertical
         fig.add_shape(
-            type="rect",
-            x0=data - pd.Timedelta(days=15),
-            x1=data + pd.Timedelta(days=15),
-            y0=-0.1,
-            y1=0.1,
-            line=dict(color=cor, width=2),
-            fillcolor="rgba(0,0,0,0)",  # Transparent background
-            xref="x",
-            yref="y"
-        )
-        fig.add_annotation(
-            x=data,
-            y=0,
+            type="line",
+            x0=data,
+            x1=data,
+            y0=0.8,  # Ajuste para começar mais abaixo dos cards
+            y1=1,
             xref="x",
             yref="paper",
-            text=f"<b>{texto}</b><br>{data.strftime('%d/%m/%Y')}",
-            font=dict(color=cor, size=12),
-            showarrow=True,
-            arrowhead=2,
-            ax=0,
-            ay=-40,
-            bgcolor="rgba(255, 255, 255, 0.8)",  # Background color for the card
-            bordercolor=cor,
-            borderwidth=2,
+            line=dict(color=cor, width=2, dash="dot"),
+        )
+        # Card estilizado
+        fig.add_annotation(
+            x=data,
+            y=1,
+            xref="x",
+            yref="paper",
+            text=f"<span style='font-size:12px; color:black'>{texto}</span><br><span style='font-size:14px; color:black'><b>{data.strftime('%d/%m/%Y')}</b></span>",
+            showarrow=False,
+            xanchor="center",
+            yanchor="bottom",
+            bgcolor=cor,
+            bordercolor="black",
+            borderwidth=0,
             borderpad=4,
             align="center",
-            opacity=0.8
         )
 
     # Eixo x com datas Month-Year no formato desejado
