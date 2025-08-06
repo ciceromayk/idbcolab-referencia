@@ -1,128 +1,246 @@
-import streamlit as st
+import datetime
 import pandas as pd
-from datetime import timedelta, datetime
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
-from io import BytesIO
-from tinydb import TinyDB, Query
-import io
+import plotly.express as px
+import streamlit as st
 
-# Inicializa o banco de dados do TinyDB
-db = TinyDB('cronogramas_db.json')
-Cronograma = Query()
-
-# Configuração da página
-st.set_page_config(page_title="Editor de Cronograma", layout="wide")
-st.title("Editor de Cronograma Interativo")
-
-# ----------------------------------------------------------------
-# Sidebar: Carregar cronograma salvo (se houver)
-st.sidebar.header("Carregar Cronograma")
-saved_records = db.all()
-nomes_salvos = [record['nome'] for record in saved_records]
-cronograma_selecionado = st.sidebar.selectbox("Selecione um cronograma salvo:", [""] + nomes_salvos)
-
-if cronograma_selecionado != "":
-    record = db.get(Cronograma.nome == cronograma_selecionado)
-    df = pd.DataFrame(record["dados"])
-    df["Início"] = pd.to_datetime(df["Início"])
-else:
-    # Dados iniciais caso nenhum cronograma salvo seja selecionado
-    dados_iniciais = {
-        "Tarefa": ["Projeto Executivo", "Licenciamento", "Obra"],
-        "Início": ["2024-07-01", "2024-07-15", "2024-08-01"],
-        "Duração (dias)": [14, 10, 60],
-        "Responsável": ["Engenharia", "Ambiental", "Construtora"]
+def calcular_cronograma_macro(data_lancamento: datetime.date, additional_info: dict = None) -> tuple:
+    offsets = {
+        "CONCEPÇÃO DO PRODUTO": (0, 180),
+        "INCORPORAÇÃO": (180, 420),
+        "ANTEPROJETOS": (240, 390),
+        "PROJETOS EXECUTIVOS": (330, 660),
+        "ORÇAMENTO": (390, 690),
+        "PLANEJAMENTO": (435, 720),
+        "LANÇAMENTO": (240, 540),
+        "PRÉ-OBRA": (420, 720),
     }
-    df = pd.DataFrame(dados_iniciais)
-    df["Início"] = pd.to_datetime(df["Início"])
+    day_zero = data_lancamento - datetime.timedelta(days=offsets["LANÇAMENTO"][1])
+    records = []
 
-# ----------------------------------------------------------------
-# Lista de responsáveis (pode ser expandida ou vinda de uma fonte externa)
-lista_responsaveis = ["Engenharia", "Ambiental", "Financeiro", "Jurídico", "Construtora", "Cliente"]
-
-# Configuração da AgGrid para edição do cronograma
-gb = GridOptionsBuilder.from_dataframe(df)
-gb.configure_default_column(editable=True, resizable=True)
-# Configurar coluna "Início" para exibir data no formato "yyyy-MM-dd"
-gb.configure_column(
-    "Início", 
-    type=["dateColumnFilter", "customDateTimeFormat"], 
-    custom_format_string="yyyy-MM-dd", 
-    editable=True
-)
-# Configurar coluna "Responsável" como lista suspensa (combo box)
-gb.configure_column(
-    "Responsável", 
-    editable=True, 
-    cellEditor="agSelectCellEditor", 
-    cellEditorParams={"values": lista_responsaveis}
-)
-grid_options = gb.build()
-
-st.subheader("Edite o cronograma aqui:")
-grid_response = AgGrid(
-    df,
-    gridOptions=grid_options,
-    update_mode=GridUpdateMode.MODEL_CHANGED,
-    allow_unsafe_jscode=True,
-    enable_enterprise_modules=False,
-    fit_columns_on_grid_load=True,
-    height=300,
-    key='cronograma_tabela'
-)
-
-# Obter os dados editados
-df_editado = pd.DataFrame(grid_response["data"])
-df_editado["Início"] = pd.to_datetime(df_editado["Início"], errors="coerce")
-df_editado["Término"] = df_editado["Início"] + pd.to_timedelta(df_editado["Duração (dias)"], unit="D")
-
-st.markdown("---")
-st.subheader("Cronograma Final:")
-st.dataframe(df_editado, use_container_width=True)
-
-# ----------------------------------------------------------------
-# Seção para salvar o cronograma (versões)
-st.subheader("Salvar Cronograma")
-nome_novo = st.text_input("Nome desta versão do cronograma:")
-if st.button("Salvar versão"):
-    if nome_novo.strip():
-        df_to_save = df_editado.copy()
-        # Converter as datas para string para salvar no banco de dados
-        df_to_save["Início"] = df_to_save["Início"].dt.strftime("%Y-%m-%d")
-        df_to_save["Término"] = df_to_save["Término"].dt.strftime("%Y-%m-%d")
-        if db.contains(Cronograma.nome == nome_novo):
-            db.update({"dados": df_to_save.to_dict(orient="records")}, Cronograma.nome == nome_novo)
-            st.success(f"Cronograma '{nome_novo}' atualizado com sucesso!")
+    for tarefa, (i0, i1) in offsets.items():
+        start = day_zero + datetime.timedelta(days=i0)
+        end = day_zero + datetime.timedelta(days=i1)
+        record = {"Tarefa": tarefa.upper(), "Início": start, "Término": end}
+        if additional_info and tarefa.upper() in additional_info:
+            record.update(additional_info[tarefa.upper()])
         else:
-            db.insert({"nome": nome_novo, "dados": df_to_save.to_dict(orient="records")})
-            st.success(f"Cronograma '{nome_novo}' salvo com sucesso!")
+            record.update({"Responsável": "N/A", "Status": "Pendente", "Notas": ""})
+        records.append(record)
+
+    tarefas_ordenadas = [
+        "CONCEPÇÃO DO PRODUTO", "INCORPORAÇÃO", "ANTEPROJETOS", "PROJETOS EXECUTIVOS",
+        "ORÇAMENTO", "PLANEJAMENTO", "LANÇAMENTO", "PRÉ-OBRA"
+    ]
+
+    df = pd.DataFrame(records)
+    df["Início"] = pd.to_datetime(df["Início"])
+    df["Término"] = pd.to_datetime(df["Término"])
+    df["Tarefa"] = pd.Categorical(df["Tarefa"], categories=tarefas_ordenadas, ordered=True)
+    df = df.sort_values("Tarefa").reset_index(drop=True)
+
+    return df, day_zero
+
+def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequence=None) -> px.timeline:
+    hoje = datetime.date.today()
+    lancamento = data_lanc
+    inicio_projeto = df["Início"].min()
+    max_date = df["Término"].max()
+
+    # Definir o fim do período ao final do último Término + um mês
+    if max_date.day != 1:
+        next_month = (max_date.replace(day=1) + pd.Timedelta(days=32)).replace(day=1)
     else:
-        st.error("Digite um nome para salvar o cronograma.")
+        next_month = max_date
+    total_months = (next_month.year - inicio_projeto.year) * 12 + (next_month.month - inicio_projeto.month) + 1
+    end_period = (inicio_projeto + pd.DateOffset(months=total_months))
 
-# ----------------------------------------------------------------
-# Função para gerar o arquivo Excel para download
-def gerar_download_excel(dataframe):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        dataframe.to_excel(writer, index=False, sheet_name="Cronograma")
-    return output.getvalue()
+    # Montar lista de ticks com datas no formato MMM-YY
+    tickvals = []
+    ticktext = []
+    current_month = inicio_projeto.replace(day=1)
+    for _ in range(total_months):
+        tickvals.append(current_month)
+        ticktext.append(current_month.strftime("%b-%y").capitalize())  # Ex: 'Ago-25'
+        # incrementar mês
+        year = current_month.year + ((current_month.month) // 12)
+        month = ((current_month.month) % 12) + 1
+        current_month = current_month.replace(year=year, month=month)
+    
+    fig = px.timeline(
+        df,
+        x_start="Início",
+        x_end="Término",
+        y="Tarefa",
+        color="Tarefa",
+        height=650,
+        color_discrete_sequence=color_sequence,
+        hover_data=["Responsável", "Status", "Notas"]
+    )
 
-excel_data = gerar_download_excel(df_editado)
-st.download_button(
-    label="Baixar Cronograma em Excel",
-    data=excel_data,
-    file_name="cronograma.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+    # Marcos verticais
+    for data, cor, texto in [
+        (inicio_projeto, "green", "INÍCIO DO PROJETO"),
+        (hoje, "red", "HOJE"),
+        (lancamento, "blue", "LANÇAMENTO"),
+        (lancamento + datetime.timedelta(days=120), "purple", "INÍCIO DE OBRAS")
+    ]:
+        fig.add_shape(
+            type="line",
+            x0=data,
+            x1=data,
+            y0=0,
+            y1=1,
+            xref="x",
+            yref="paper",
+            line=dict(color=cor, width=2, dash="dot"),
+        )
+        fig.add_annotation(
+            x=data,
+            y=1,
+            xref="x",
+            yref="paper",
+            text=texto,
+            font=dict(color=cor, size=12),
+            showarrow=False,
+            xanchor="center",
+            yanchor="bottom"
+        )
 
-# ----------------------------------------------------------------
-# Seção para gerenciar (excluir) cronogramas salvos
-with st.expander("Gerenciar Cronogramas Salvos"):
-    if nomes_salvos:
-        nome_para_deletar = st.selectbox("Selecione um cronograma para excluir:", nomes_salvos)
-        if st.button("Excluir Cronograma"):
-            db.remove(Cronograma.nome == nome_para_deletar)
-            st.success(f"Cronograma '{nome_para_deletar}' removido com sucesso!")
-            st.experimental_rerun()
+    # Eixo x com datas Month-Year no formato desejado
+    fig.update_xaxes(
+        tickvals=tickvals,
+        ticktext=ticktext,
+        range=[inicio_projeto, end_period],
+        showgrid=True,
+        gridcolor="lightgray",
+        dtick="M1"
+    )
+
+    fig.update_yaxes(showgrid=True, gridcolor="lightgray", title_text=None, title_font={'size': 16})
+
+    # Linhas de fundo alternadas
+    n = len(df)
+    for i in range(n):
+        if i % 2 == 0:
+            y0 = 1 - (i + 1) / n
+            y1 = 1 - i / n
+            fig.add_shape(
+                type="rect",
+                xref="paper",
+                yref="paper",
+                x0=0,
+                x1=1,
+                y0=y0,
+                y1=y1,
+                fillcolor="lightgray",
+                opacity=0.2,
+                line_width=0,
+                layer="below"
+            )
+
+    # Datas visíveis, deslocadas
+    deslocamento = pd.Timedelta(days=3)
+    annotations = []
+    for _, row in df.iterrows():
+        ini = row["Início"]
+        ter = row["Término"]
+        if pd.notnull(ini):
+            annotations.append(dict(
+                x=ini - deslocamento,
+                y=row["Tarefa"],
+                text=f"<b>{ini:%d-%m-%Y}</b>",
+                showarrow=False,
+                font=dict(color="black", size=12),
+                xanchor="right",
+                yanchor="middle"
+            ))
+        if pd.notnull(ter):
+            annotations.append(dict(
+                x=ter + deslocamento,
+                y=row["Tarefa"],
+                text=f"<b>{ter:%d-%m-%Y}</b>",
+                showarrow=False,
+                font=dict(color="black", size=12),
+                xanchor="left",
+                yanchor="middle"
+            ))
+
+    fig.update_layout(
+        annotations=annotations,
+        margin=dict(l=250, r=40, t=20, b=40),
+        showlegend=False
+    )
+
+    return fig
+
+def main():
+    st.set_page_config(page_title="IDBCOLAB - COMITÊ DE PRODUTO", layout="wide")
+    st.sidebar.image(
+        "https://raw.githubusercontent.com/ciceromayk/idbcolab-referencia/main/LOGO%20IDBCOLAB.png",
+        use_container_width=True
+    )
+    st.sidebar.markdown("## IDIBRA PARTICIPAÇÕES")
+    nome = st.sidebar.text_input("📝 Nome do Projeto")
+    data_lanc = st.sidebar.date_input("📅 LANÇAMENTO:", value=datetime.date.today(), format="DD-MM-YYYY")
+
+    st.sidebar.markdown("## Opções de Personalização")
+    color_palettes = {
+        "Default": None,
+        "Viridis": px.colors.sequential.Viridis,
+        "Cividis": px.colors.sequential.Cividis,
+        "Plotly": px.colors.qualitative.Plotly,
+        "Dark2": px.colors.qualitative.Dark2
+    }
+
+    if "selected_palette" not in st.session_state:
+        st.session_state.selected_palette = "Default"
+
+    selected_palette = st.sidebar.selectbox("Selecione a paleta de cores", list(color_palettes.keys()))
+
+    if selected_palette != st.session_state.selected_palette:
+        st.session_state.selected_palette = selected_palette
+        st.session_state.gerar_grafico = True
+
+    color_sequence = color_palettes[st.session_state.selected_palette]
+    gerar = st.sidebar.button("🚀 GERAR CRONOGRAMA")
+
+    st.title("IDBCOLAB - COMITÊ DE PRODUTO")
+    st.subheader("Cronograma do Projeto")
+    if nome:
+        st.markdown(f"**Projeto:** {nome.upper()}")
+
+    if gerar or ("gerar_grafico" in st.session_state and st.session_state.gerar_grafico):
+        df, _ = calcular_cronograma_macro(data_lanc)
+        st.session_state.data_frame = df
+
+        hoje = datetime.date.today()
+        lancamento = data_lanc
+        inicio_projeto = df["Início"].min()
+        inicio_obras = lancamento + datetime.timedelta(days=120)
+
+        fig = criar_grafico_macro(df, data_lanc, color_sequence=color_sequence)
+        st.plotly_chart(fig, use_container_width=True, config={"locale": "pt-BR"})
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("**INÍCIO DO PROJETO**", inicio_projeto.strftime("%d/%m/%Y"))
+        with col2:
+            st.metric("**HOJE**", hoje.strftime("%d/%m/%Y"))
+        with col3:
+            st.metric("**LANÇAMENTO**", lancamento.strftime("%d/%m/%Y"))
+        with col4:
+            st.metric("**INÍCIO DE OBRAS**", inicio_obras.strftime("%d/%m/%Y"))
+
+        csv_data = df.to_csv(index=False).encode("utf-8-sig")
+        st.sidebar.download_button(
+            "📥 Baixar Cronograma em CSV", csv_data, "cronograma.csv", "text/csv"
+        )
+
+        if "gerar_grafico" in st.session_state:
+            del st.session_state.gerar_grafico
+
     else:
-        st.info("Nenhum cronograma salvo.")
+        st.info("Preencha o nome e a data de lançamento, depois clique em GERAR CRONOGRAMA.")
+
+if __name__ == "__main__":
+    main()
