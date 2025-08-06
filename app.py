@@ -85,25 +85,33 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         (lancamento + datetime.timedelta(days=120), "purple", "INÍCIO DE OBRAS")
     ]:
         fig.add_shape(
-            type="line",
-            x0=data,
-            x1=data,
-            y0=0,
-            y1=1,
+            type="rect",
+            x0=data - pd.Timedelta(days=15),
+            x1=data + pd.Timedelta(days=15),
+            y0=-0.1,
+            y1=0.1,
+            line=dict(color=cor, width=2),
+            fillcolor="rgba(0,0,0,0)",  # Transparent background
             xref="x",
-            yref="paper",
-            line=dict(color=cor, width=2, dash="dot"),
+            yref="y"
         )
         fig.add_annotation(
             x=data,
-            y=1,
+            y=0,
             xref="x",
             yref="paper",
-            text=texto,
+            text=f"<b>{texto}</b><br>{data.strftime('%d/%m/%Y')}",
             font=dict(color=cor, size=12),
-            showarrow=False,
-            xanchor="center",
-            yanchor="bottom"
+            showarrow=True,
+            arrowhead=2,
+            ax=0,
+            ay=-40,
+            bgcolor="rgba(255, 255, 255, 0.8)",  # Background color for the card
+            bordercolor=cor,
+            borderwidth=2,
+            borderpad=4,
+            align="center",
+            opacity=0.8
         )
 
     # Eixo x com datas Month-Year no formato desejado
