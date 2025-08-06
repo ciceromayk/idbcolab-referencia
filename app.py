@@ -77,39 +77,23 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Cores para os cards (ajustar conforme necessário)
-    card_colors = {
-        "INÍCIO DO PROJETO": "rgba(240, 128, 128, 0.3)",  # LightCoral com transparência
-        "HOJE": "rgba(240, 128, 128, 0.3)",
-        "LANÇAMENTO": "rgba(240, 128, 128, 0.3)",
-        "INÍCIO DE OBRAS": "rgba(240, 128, 128, 0.3)"
-    }
-
-    # Cor do texto
-    text_color = "rgb(139, 69, 19)"  # SaddleBrown
-
-    # Marcos verticais estilizados (cards)
+    # Marcos verticais modernizados
     for data, texto in [
         (inicio_projeto, "INÍCIO DO PROJETO"),
         (hoje, "HOJE"),
         (lancamento, "LANÇAMENTO"),
         (lancamento + datetime.timedelta(days=120), "INÍCIO DE OBRAS")
     ]:
-        cor = card_colors[texto]
         # Card estilizado
         fig.add_annotation(
             x=data,
-            y=1,
+            y=1.05,
             xref="x",
             yref="paper",
-            text=f"<span style='font-size:12px; color:{text_color}'>{texto}</span><br><span style='font-size:14px; color:{text_color}'><b>{data.strftime('%d/%m/%Y')}</b></span>",
+            text=f"<div style='border-radius: 10px; background-color: rgba(255, 192, 203, 0.8); padding: 8px; margin: 0px; text-align: center;'><b>{texto}</b><br>{data.strftime('%d/%m/%Y')}</div>",
             showarrow=False,
             xanchor="center",
             yanchor="bottom",
-            bgcolor=cor,  # Cor de fundo com transparência
-            bordercolor=cor,
-            borderwidth=0,
-            borderpad=4,
             align="center",
         )
 
