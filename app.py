@@ -77,24 +77,33 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Marcos verticais modernizados
-    for data, texto in [
-        (inicio_projeto, "INÍCIO DO PROJETO"),
-        (hoje, "HOJE"),
-        (lancamento, "LANÇAMENTO"),
-        (lancamento + datetime.timedelta(days=120), "INÍCIO DE OBRAS")
+    # Marcos verticais
+    for data, cor, texto in [
+        (inicio_projeto, "green", "INÍCIO DO PROJETO"),
+        (hoje, "red", "HOJE"),
+        (lancamento, "blue", "LANÇAMENTO"),
+        (lancamento + datetime.timedelta(days=120), "purple", "INÍCIO DE OBRAS")
     ]:
-        # Card estilizado
-        fig.add_annotation(
-            x=data,
-            y=1.05,
+        fig.add_shape(
+            type="line",
+            x0=data,
+            x1=data,
+            y0=0,
+            y1=1,
             xref="x",
             yref="paper",
-            text=f"<div style='border-radius: 10px; background-color: rgba(255, 192, 203, 0.8); padding: 8px; margin: 0px; text-align: center;'><b>{texto}</b><br>{data.strftime('%d/%m/%Y')}</div>",
+            line=dict(color=cor, width=2, dash="dot"),
+        )
+        fig.add_annotation(
+            x=data,
+            y=1,
+            xref="x",
+            yref="paper",
+            text=texto,
+            font=dict(color=cor, size=12),
             showarrow=False,
             xanchor="center",
-            yanchor="bottom",
-            align="center",
+            yanchor="bottom"
         )
 
     # Eixo x com datas Month-Year no formato desejado
