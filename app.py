@@ -77,15 +77,18 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         hover_data=["Responsável", "Status", "Notas"]
     )
 
-    # Cores para os cards
+    # Cores para os cards (ajustar conforme necessário)
     card_colors = {
-        "INÍCIO DO PROJETO": "lightgreen",
-        "HOJE": "lightcoral",
-        "LANÇAMENTO": "lightblue",
-        "INÍCIO DE OBRAS": "plum"
+        "INÍCIO DO PROJETO": "rgba(240, 128, 128, 0.3)",  # LightCoral com transparência
+        "HOJE": "rgba(240, 128, 128, 0.3)",
+        "LANÇAMENTO": "rgba(240, 128, 128, 0.3)",
+        "INÍCIO DE OBRAS": "rgba(240, 128, 128, 0.3)"
     }
 
-    # Marcos verticais estilizados
+    # Cor do texto
+    text_color = "rgb(139, 69, 19)"  # SaddleBrown
+
+    # Marcos verticais estilizados (cards)
     for data, texto in [
         (inicio_projeto, "INÍCIO DO PROJETO"),
         (hoje, "HOJE"),
@@ -93,29 +96,18 @@ def criar_grafico_macro(df: pd.DataFrame, data_lanc: datetime.date, color_sequen
         (lancamento + datetime.timedelta(days=120), "INÍCIO DE OBRAS")
     ]:
         cor = card_colors[texto]
-        # Linha vertical
-        fig.add_shape(
-            type="line",
-            x0=data,
-            x1=data,
-            y0=0.8,  # Ajuste para começar mais abaixo dos cards
-            y1=1,
-            xref="x",
-            yref="paper",
-            line=dict(color=cor, width=2, dash="dot"),
-        )
         # Card estilizado
         fig.add_annotation(
             x=data,
             y=1,
             xref="x",
             yref="paper",
-            text=f"<span style='font-size:12px; color:black'>{texto}</span><br><span style='font-size:14px; color:black'><b>{data.strftime('%d/%m/%Y')}</b></span>",
+            text=f"<span style='font-size:12px; color:{text_color}'>{texto}</span><br><span style='font-size:14px; color:{text_color}'><b>{data.strftime('%d/%m/%Y')}</b></span>",
             showarrow=False,
             xanchor="center",
             yanchor="bottom",
-            bgcolor=cor,
-            bordercolor="black",
+            bgcolor=cor,  # Cor de fundo com transparência
+            bordercolor=cor,
             borderwidth=0,
             borderpad=4,
             align="center",
